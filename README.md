@@ -359,6 +359,8 @@ Storage errors are thrown by `RedisCacheTier` and also carry `domainName`. `Cach
 - **Explicit hit/miss.** Tiers return `{ hit: true, value } | { hit: false }` rather than `T | undefined`, so a cached `null` is never mistaken for a miss.
 - **L1 holds references.** `InMemoryCacheTier` stores the loaded object itself, not a copy. Treat cached values as immutable.
 - **L2 is JSON.** Values round-trip through `JSON.stringify` / `JSON.parse`, so `Date`, `Map`, `Set`, and class instances do not survive an L2 hit unchanged. Cache plain data.
+- **Type arguments are trusted.** `get<T>(name)` does not check that `T` matches the type the domain was registered with; the compiler takes the caller's word. The [typed facade](#typed-facade) pattern keeps each name paired with its type in one place.
+- **Worst-case staleness is L1 + L2 TTL.** When an L2 hit is copied into L1 it starts a fresh L1 TTL, so without an `invalidate` a value can be served for up to the sum of both TTLs after it was loaded. Size TTLs, or invalidate on write, with that bound in mind.
 - **Versioned keys.** Redis keys include a format version (`cache-manager:v1:…`). Changing the stored format means bumping the version so old entries are simply ignored.
 
 ## Project layout
