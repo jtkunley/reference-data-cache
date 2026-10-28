@@ -9,7 +9,10 @@ export {
     RedisCacheTier,
     type RedisCacheTierOptions,
 } from './cache-tiers/redis/redis-cache-tier.js';
-export { createRedisCacheTierFromRedisV3 } from './cache-tiers/redis/create-redis-cache-tier-from-redis-v3.js';
+export {
+    createRedisCacheTierFromRedisV3,
+    type RedisV3Client,
+} from './cache-tiers/redis/create-redis-cache-tier-from-redis-v3.js';
 
 export {
     CacheDomainAlreadyRegisteredError,
@@ -27,6 +30,7 @@ export type {
     CacheTierErrorEvent,
     CacheTierErrorKind,
     CacheTierOperation,
+    SharedCacheClient,
 } from './contracts/common.js';
 export type {
     CacheReader,

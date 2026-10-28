@@ -10,7 +10,7 @@ import {
  * Only `get`, `set` with a PX expiry, and `del` are described here, which
  * keeps the package free of any dependency on the real Redis typings.
  */
-interface RedisV3Client {
+export interface RedisV3Client {
     get(
         key: string,
         callback: (err: Error | null, result: string | null) => void,

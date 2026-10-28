@@ -183,7 +183,7 @@ await owner.invalidate('products');
 
 ### Connecting Redis
 
-`RedisCacheTier` talks to Redis through a three-method interface rather than a specific client library:
+`RedisCacheTier` talks to Redis through a three-method interface, exported as `SharedCacheClient`, rather than a specific client library:
 
 ```ts
 interface SharedCacheClient {
@@ -307,13 +307,13 @@ const owner = createCacheOwner({ sharedTier: new InMemoryCacheTier() });
 
 ### Functions and classes
 
-| Export                            | Description                                                                             |
-| --------------------------------- | --------------------------------------------------------------------------------------- |
-| `createCacheReader(options?)`     | Creates a memory-only `CacheReader`.                                                    |
-| `createCacheOwner(options)`       | Creates a two-level `CacheOwner` over the given shared tier.                            |
-| `InMemoryCacheTier`               | Map-backed tier with TTL expiry.                                                        |
-| `RedisCacheTier`                  | JSON-over-Redis tier; constructed from a `SharedCacheClient`-shaped object and options. |
-| `createRedisCacheTierFromRedisV3` | Wraps a callback-style `redis` v3 client in a `RedisCacheTier`.                         |
+| Export                            | Description                                                               |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `createCacheReader(options?)`     | Creates a memory-only `CacheReader`.                                      |
+| `createCacheOwner(options)`       | Creates a two-level `CacheOwner` over the given shared tier.              |
+| `InMemoryCacheTier`               | Map-backed tier with TTL expiry.                                          |
+| `RedisCacheTier`                  | JSON-over-Redis tier; constructed from a `SharedCacheClient` and options. |
+| `createRedisCacheTierFromRedisV3` | Wraps a callback-style `redis` v3 client in a `RedisCacheTier`.           |
 
 ### Constants and options
 
@@ -347,6 +347,8 @@ Storage errors are thrown by `RedisCacheTier` and also carry `domainName`. `Cach
 | `CacheOwner`, `CacheOwnerOptions`           | Owner interface (reader methods plus `invalidate`) and factory options. |
 | `CacheDomain`, `CacheLoader`, `CachePolicy` | Building blocks for registering data.                                   |
 | `CacheTier`                                 | Storage contract for shared tiers.                                      |
+| `SharedCacheClient`                         | Promise-based Redis client shape accepted by `RedisCacheTier`.          |
+| `RedisV3Client`                             | Callback-based `redis` v3 client shape accepted by the v3 factory.      |
 | `CacheTierErrorEvent`                       | Payload passed to `onTierError`; `tier` is always `'shared'`.           |
 | `CacheTierErrorKind`                        | `'timeout' \| 'corrupt-value' \| 'serialize' \| 'error'`                |
 | `CacheTierOperation`                        | `'get' \| 'set' \| 'delete'`                                            |
