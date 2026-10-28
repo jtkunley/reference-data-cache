@@ -67,6 +67,7 @@ A few rules apply to every client:
 - Domain names are unique per client. Registering a name twice throws, and so does calling `get` for a name that was never registered.
 - A loader must resolve to a real value or throw. Resolving to `null` or `undefined` is treated as an error, which keeps "nothing cached" and "cached nothing" from being confused.
 - A domain without its own policy uses the tier's default TTL.
+- TTLs are validated when a domain is registered or a default is set: `ttlMs` must be a finite number of zero or more (Redis requires a positive integer). Anything else throws a `RangeError`, and a failed `register` leaves nothing behind, so it can simply be retried.
 
 ## Choosing a client
 
@@ -169,14 +170,14 @@ await owner.invalidate('products');
 
 **TTL constraint.** `register` rejects a domain whose L1 TTL is longer than its L2 TTL, since L1 would otherwise keep serving values L2 has already expired. Both sides fall back to their tier defaults, so if the shared tier is an `InMemoryCacheTier` (default 5 minutes), an L1 TTL above 5 minutes requires an explicit `sharedPolicy`.
 
-**Invalidation.** `invalidate` removes the domain from L1 and L2, so the next `get` runs the loader. See [Resilience](#resilience) for what happens if the L2 delete fails.
+**Invalidation.** `invalidate` removes the domain from L1 and L2, so the next `get` runs the loader. Work already in progress cannot undo it: a load or L2 read that started before `invalidate` still answers the callers waiting on it, but its result is not written back to either tier, and new callers start a fresh load instead of joining the old one. See [Resilience](#resilience) for what happens if the L2 delete fails.
 
 ## Storage tiers
 
-| Tier                | Default TTL | Characteristics                                                                                                    |
-| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| `InMemoryCacheTier` | 5 minutes   | Holds one entry per domain in a `Map`; no size limit. Suited to a modest, fixed set of domains.                    |
-| `RedisCacheTier`    | 12 hours    | Stores JSON under `cache-manager:v1:<domain>`. Each call times out after `operationTimeoutMs` (500 ms by default). |
+| Tier                | Default TTL | Characteristics                                                                                                                                                                           |
+| ------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `InMemoryCacheTier` | 5 minutes   | Holds one entry per domain in a `Map`; no size limit. Suited to a modest, fixed set of domains.                                                                                           |
+| `RedisCacheTier`    | 12 hours    | Stores JSON under `cache-manager:v1:<domain>`. Each call times out after `operationTimeoutMs` (500 ms by default). TTLs must be positive integers, since they become a Redis `PX` expiry. |
 
 `InMemoryCacheTier` can also act as the shared tier of a `CacheOwner`, which is handy in tests and local development.
 
