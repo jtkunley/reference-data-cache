@@ -9,9 +9,15 @@
 - TTLs are validated at registration and in `setDefaultPolicy`. `NaN`, infinite, and negative values are rejected (previously a `NaN` TTL never expired), and `RedisCacheTier` additionally requires a positive integer, as Redis `PX` does.
 - `RedisCacheTier.set` rejects values that `JSON.stringify` turns into `undefined` (functions, symbols, `undefined`) with `CacheTierSerializationError`, instead of sending `undefined` to the client.
 
+### Changed
+
+- The package is now published as `@jtkunley/cache-manager` under the MIT license.
+- Clients throw `CacheDomainAlreadyRegisteredError` and `CacheDomainNotRegisteredError` (previously plain `Error`), matching the tiers. Both errors expose `domainName`; messages are unchanged.
+
 ### Added
 
 - `unregister(domainName)` on the built-in tiers.
+- Exports for `CacheDomainAlreadyRegisteredError`, `CacheDomainNotRegisteredError`, and the `SharedCacheClient` and `RedisV3Client` types.
 
 ## 1.0.0
 
