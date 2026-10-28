@@ -3,6 +3,7 @@ import {
     CacheDomainAlreadyRegisteredError,
     CacheDomainNotRegisteredError,
 } from '../../errors.js';
+import { InMemoryCacheTier } from '../../cache-tiers/in-memory-cache-tier.js';
 import { createCacheReader } from '../cache-reader.js';
 
 describe('CacheReader: registration and expiry', () => {
@@ -177,6 +178,33 @@ describe('CacheReader: loading', () => {
         await expect(pending).resolves.toEqual(['A', 'A', 'B', 'B']);
         expect(loadA).toHaveBeenCalledTimes(1);
         expect(loadB).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not reload when another load finishes while a get is between its cache check and the single flight', async () => {
+        const reader = createCacheReader();
+        const load = vi.fn().mockResolvedValue('v');
+        reader.register({ name: 'd', loader: { load } });
+
+        let releaseStaleMiss!: () => void;
+        const getSpy = vi
+            .spyOn(InMemoryCacheTier.prototype, 'get')
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        releaseStaleMiss = () => resolve({ hit: false });
+                    }),
+            );
+        try {
+            const late = reader.get<string>('d');
+            await expect(reader.get<string>('d')).resolves.toBe('v');
+
+            releaseStaleMiss();
+
+            await expect(late).resolves.toBe('v');
+            expect(load).toHaveBeenCalledTimes(1);
+        } finally {
+            getSpy.mockRestore();
+        }
     });
 
     it('lets a later get retry after the loader rejects', async () => {

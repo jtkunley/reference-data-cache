@@ -131,12 +131,18 @@ interface CacheOwner {
 flowchart LR
     A([get]) --> B{Fresh in L1?}
     B -->|yes| R1([return])
-    B -->|no| C{Hit in L2?}
-    C -->|yes| D[copy into L1] --> R2([return])
-    C -->|miss or failure| E[run loader<br/>one call per domain at a time]
-    E --> F[write L1<br/>write L2 in background]
+    B -->|no| S
+    subgraph S [one fetch per domain at a time]
+        C{Hit in L2?}
+        C -->|yes| D[copy into L1]
+        C -->|miss or failure| E[run loader]
+        E --> F[write L1<br/>write L2 in background]
+    end
+    D --> R2([return])
     F --> R3([return])
 ```
+
+Concurrent misses share both the L2 read and the loader call, so a burst of requests at L1 expiry costs one shared-tier round trip per process.
 
 Example with Redis:
 

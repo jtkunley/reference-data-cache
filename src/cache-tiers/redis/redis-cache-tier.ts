@@ -28,13 +28,11 @@ export interface RedisCacheTierOptions {
 export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
     static readonly NAME = 'redis';
 
-    defaultPolicy: CachePolicy = { ttlMs: 12 * 60 * 60 * 1000 }; // 12 h
-
     private readonly client: SharedCacheClient;
     private readonly operationTimeoutMs: number;
 
     constructor(client: SharedCacheClient, options?: RedisCacheTierOptions) {
-        super();
+        super({ ttlMs: 12 * 60 * 60 * 1000 }); // 12 h
         this.client = client;
         if (options?.defaultPolicy !== undefined) {
             this.setDefaultPolicy(options.defaultPolicy);
@@ -46,7 +44,7 @@ export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
             operationTimeoutMs > 0 &&
             operationTimeoutMs <= MAX_OPERATION_TIMEOUT_MS
         )) {
-            throw new Error(
+            throw new RangeError(
                 `RedisCacheTier: operationTimeoutMs must be a positive number no greater than ${MAX_OPERATION_TIMEOUT_MS}, got ${operationTimeoutMs}`,
             );
         }

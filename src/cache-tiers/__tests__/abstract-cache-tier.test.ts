@@ -7,7 +7,9 @@ import {
 
 /** Bare-bones tier used only to test the registration checks in `AbstractCacheTier`. */
 class StubCacheTier extends AbstractCacheTier {
-    defaultPolicy = { ttlMs: 1000 };
+    constructor() {
+        super({ ttlMs: 1000 });
+    }
 
     async get<T>(domainName: string): Promise<CacheTierLookup<T>> {
         this.assertRegistered(domainName);
@@ -75,5 +77,16 @@ describe('AbstractCacheTier', () => {
         const tier = new StubCacheTier();
         tier.setDefaultPolicy({ ttlMs: 42 });
         expect(tier.defaultPolicy).toEqual({ ttlMs: 42 });
+    });
+
+    it('keeps its own copy of each policy, so later mutation cannot bypass validation', () => {
+        const tier = new StubCacheTier();
+        const policy = { ttlMs: 42 };
+        tier.setDefaultPolicy(policy);
+
+        policy.ttlMs = Number.NaN;
+
+        expect(tier.defaultPolicy).toEqual({ ttlMs: 42 });
+        expect(Object.isFrozen(tier.defaultPolicy)).toBe(true);
     });
 });

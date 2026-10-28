@@ -266,6 +266,13 @@ describe('CacheOwner: core behaviour', () => {
         ).toThrow(
             /CacheOwner domain "bad" has invalid policy configuration: in-memory TTL must be less than or equal to shared TTL/,
         );
+        expect(() =>
+            owner.register({
+                name: 'bad',
+                loader: { load: vi.fn() },
+                inMemoryPolicy: { ttlMs: 2000 },
+            }),
+        ).toThrow(RangeError);
     });
 
     it('refuses a second registration of the same domain', () => {
@@ -495,9 +502,55 @@ describe('CacheOwner: shared-tier failures', () => {
         );
     });
 
-    it('calls the loader once even when concurrent L2 reads time out at different times', async () => {
+    it('shares one L2 read across concurrent gets that miss L1', async () => {
+        const { owner, shared, load } = redisBackedOwner({
+            get: vi.fn().mockResolvedValue(JSON.stringify({ id: 'shared' })),
+        });
+
+        const results = await Promise.all([
+            owner.get('d'),
+            owner.get('d'),
+            owner.get('d'),
+        ]);
+
+        expect(results).toEqual([
+            { id: 'shared' },
+            { id: 'shared' },
+            { id: 'shared' },
+        ]);
+        expect(shared.get).toHaveBeenCalledTimes(1);
+        expect(load).not.toHaveBeenCalled();
+    });
+
+    it('skips L2 and the loader when another fetch fills L1 while a get is between its L1 check and the single flight', async () => {
+        const { owner, shared, load } = redisBackedOwner({});
+
+        let releaseStaleMiss!: () => void;
+        const l1Get = vi
+            .spyOn(InMemoryCacheTier.prototype, 'get')
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        releaseStaleMiss = () => resolve({ hit: false });
+                    }),
+            );
+        try {
+            const late = owner.get('d');
+            await expect(owner.get('d')).resolves.toEqual({ id: 'fresh' });
+
+            releaseStaleMiss();
+
+            await expect(late).resolves.toEqual({ id: 'fresh' });
+            expect(shared.get).toHaveBeenCalledTimes(1);
+            expect(load).toHaveBeenCalledTimes(1);
+        } finally {
+            l1Get.mockRestore();
+        }
+    });
+
+    it('lets a get that arrives during a hanging L2 read join it, calling the loader once', async () => {
         vi.useFakeTimers();
-        const { owner, load } = redisBackedOwner({ get: vi.fn(never) });
+        const { owner, shared, load } = redisBackedOwner({ get: vi.fn(never) });
 
         const first = owner.get('d');
         await vi.advanceTimersByTimeAsync(20);
@@ -506,6 +559,7 @@ describe('CacheOwner: shared-tier failures', () => {
 
         await expect(first).resolves.toEqual({ id: 'fresh' });
         await expect(second).resolves.toEqual({ id: 'fresh' });
+        expect(shared.get).toHaveBeenCalledTimes(1);
         expect(load).toHaveBeenCalledTimes(1);
     });
 

@@ -9,22 +9,32 @@ import {
 } from '../errors.js';
 
 export abstract class AbstractCacheTier implements CacheTier {
-    abstract defaultPolicy: CachePolicy;
+    private currentDefaultPolicy: Readonly<CachePolicy>;
+    private readonly policies = new Map<string, Readonly<CachePolicy>>();
 
-    private readonly policies = new Map<string, CachePolicy>();
+    /** Subclasses pass a built-in default here; it is trusted, unlike values passed to `setDefaultPolicy`. */
+    protected constructor(defaultPolicy: CachePolicy) {
+        this.currentDefaultPolicy = snapshot(defaultPolicy);
+    }
+
+    get defaultPolicy(): Readonly<CachePolicy> {
+        return this.currentDefaultPolicy;
+    }
 
     setDefaultPolicy(policy: CachePolicy): void {
-        this.assertValidPolicy(policy, 'the default policy');
-        this.defaultPolicy = policy;
+        const copy = snapshot(policy);
+        this.assertValidPolicy(copy, 'the default policy');
+        this.currentDefaultPolicy = copy;
     }
 
     register(domainName: string, policy: CachePolicy): void {
         if (this.policies.has(domainName)) {
             throw new CacheDomainAlreadyRegisteredError(domainName);
         }
-        this.assertValidPolicy(policy, `domain "${domainName}"`);
+        const copy = snapshot(policy);
+        this.assertValidPolicy(copy, `domain "${domainName}"`);
 
-        this.policies.set(domainName, policy);
+        this.policies.set(domainName, copy);
     }
 
     /** Forgets a domain so its name can be registered again; unknown names are ignored. */
@@ -36,7 +46,7 @@ export abstract class AbstractCacheTier implements CacheTier {
     abstract set<T>(domainName: string, value: T): Promise<void>;
     abstract delete(domainName: string): Promise<void>;
 
-    protected getPolicy(domainName: string): CachePolicy {
+    protected getPolicy(domainName: string): Readonly<CachePolicy> {
         this.assertRegistered(domainName);
         return this.policies.get(domainName)!;
     }
@@ -56,4 +66,9 @@ export abstract class AbstractCacheTier implements CacheTier {
             throw new CacheDomainNotRegisteredError(domainName);
         }
     }
+}
+
+/** Validated policies are copied and frozen so a caller mutating its own object later cannot bypass validation. */
+function snapshot(policy: CachePolicy): Readonly<CachePolicy> {
+    return Object.freeze({ ttlMs: policy.ttlMs });
 }

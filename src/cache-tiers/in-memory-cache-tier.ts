@@ -1,8 +1,4 @@
-import type {
-    CachePolicy,
-    CacheTier,
-    CacheTierLookup,
-} from '../contracts/common.js';
+import type { CacheTier, CacheTierLookup } from '../contracts/common.js';
 import { AbstractCacheTier } from './abstract-cache-tier.js';
 
 interface InMemoryCacheEntry {
@@ -13,9 +9,11 @@ interface InMemoryCacheEntry {
 export class InMemoryCacheTier extends AbstractCacheTier implements CacheTier {
     static readonly NAME = 'in-memory';
 
-    defaultPolicy: CachePolicy = { ttlMs: 5 * 60 * 1000 }; // 5 min
-
     private readonly entries = new Map<string, InMemoryCacheEntry>();
+
+    constructor() {
+        super({ ttlMs: 5 * 60 * 1000 }); // 5 min
+    }
 
     override unregister(domainName: string): void {
         super.unregister(domainName);

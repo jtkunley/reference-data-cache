@@ -36,7 +36,7 @@ export interface CacheOptions {
 export type CacheTierLookup<T> = { hit: false } | { hit: true; value: T };
 
 export interface CacheTier {
-    defaultPolicy: CachePolicy;
+    readonly defaultPolicy: Readonly<CachePolicy>;
     setDefaultPolicy(policy: CachePolicy): void;
     register(domainName: string, policy: CachePolicy): void;
     get<T>(domainName: string): Promise<CacheTierLookup<T>>;

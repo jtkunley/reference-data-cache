@@ -37,7 +37,7 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
             domain.sharedPolicy ?? this.sharedTier.defaultPolicy;
 
         if (inMemoryPolicy.ttlMs > sharedPolicy.ttlMs) {
-            throw new Error(
+            throw new RangeError(
                 `CacheOwner domain "${domain.name}" has invalid policy configuration: in-memory TTL must be less than or equal to shared TTL`,
             );
         }
@@ -61,27 +61,27 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
             return inMemoryValue.value;
         }
 
-        const readGeneration = this.generationOf(domainName);
-        const sharedValue = await this.readShared<T>(domainName);
-        if (sharedValue.hit) {
-            if (this.generationOf(domainName) === readGeneration) {
-                await this.inMemoryTier.set(domainName, sharedValue.value);
-            }
-            return sharedValue.value;
-        }
-
+        // The L2 read sits inside the single flight too, so a burst of L1 misses costs one shared-tier round trip, not one per caller.
         return this.runSingleFlight(domainName, async () => {
-            const loadGeneration = this.generationOf(domainName);
+            const generation = this.generationOf(domainName);
 
-            // Re-check L1: another get could have populated it during our L2 round trip.
+            // Re-check L1: a flight that just finished may have filled it after our first check.
             const cached = await this.inMemoryTier.get<T>(domainName);
             if (cached.hit) {
                 return cached.value;
             }
 
+            const sharedValue = await this.readShared<T>(domainName);
+            if (sharedValue.hit) {
+                if (this.generationOf(domainName) === generation) {
+                    await this.inMemoryTier.set(domainName, sharedValue.value);
+                }
+                return sharedValue.value;
+            }
+
             const loadedValue = await domain.loader.load();
             this.assertLoaderYieldedValue(domainName, loadedValue);
-            if (this.generationOf(domainName) !== loadGeneration) {
+            if (this.generationOf(domainName) !== generation) {
                 return loadedValue;
             }
             void this.writeShared(domainName, loadedValue);

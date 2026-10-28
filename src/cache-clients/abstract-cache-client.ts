@@ -59,7 +59,7 @@ export abstract class AbstractCacheClient {
     }
 
     /**
-     * Once the tiers have missed, lets concurrent callers for one domain share a single in-progress load.
+     * Once L1 has missed, lets concurrent callers for one domain share a single in-progress fetch.
      */
     protected async runSingleFlight<T>(
         domainName: string,

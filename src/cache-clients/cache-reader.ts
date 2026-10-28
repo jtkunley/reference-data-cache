@@ -28,6 +28,12 @@ class CacheReaderImpl extends AbstractCacheClient implements CacheReader {
         }
 
         return this.runSingleFlight(domainName, async () => {
+            // Re-check: a flight that just finished may have filled the cache after our first check.
+            const refreshed = await this.inMemoryTier.get<T>(domainName);
+            if (refreshed.hit) {
+                return refreshed.value;
+            }
+
             const value = await domain.loader.load();
             this.assertLoaderYieldedValue(domainName, value);
             await this.inMemoryTier.set(domainName, value);
