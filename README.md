@@ -401,3 +401,7 @@ npm run check   # typecheck, lint, format check, and tests
 ### Changing the Redis format
 
 If you change how `RedisCacheTier` serializes values in a way existing entries can't be read, bump `CACHE_KEY_VERSION` in `src/contracts/common.ts` and record it in `CHANGELOG.md`. New keys are written under the new version, and old ones expire on their own.
+
+## License
+
+[MIT](LICENSE)

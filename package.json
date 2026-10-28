@@ -16,7 +16,7 @@
     "bugs": {
         "url": "https://github.com/jtkunley/cache-manager/issues"
     },
-    "license": "UNLICENSED",
+    "license": "MIT",
     "type": "module",
     "exports": {
         ".": {
@@ -27,7 +27,8 @@
     "files": [
         "dist",
         "README.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "LICENSE"
     ],
     "engines": {
         "node": ">=24"
