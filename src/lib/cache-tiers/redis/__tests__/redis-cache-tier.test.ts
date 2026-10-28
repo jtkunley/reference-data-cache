@@ -247,6 +247,26 @@ describe('RedisCacheTier', () => {
         expect(tier.defaultPolicy).toEqual({ ttlMs });
     });
 
+    it.each([0, 1.5, -1, Number.NaN])(
+        'refuses a TTL of %s, which Redis cannot use as a PX expiry',
+        (ttlMs) => {
+            const client: SharedCacheClient = {
+                get: vi.fn(),
+                set: vi.fn(),
+                delete: vi.fn(),
+            };
+            const tier = new RedisCacheTier(client);
+
+            expect(() => tier.register('d', { ttlMs })).toThrow(
+                /RedisCacheTier: invalid TTL for domain "d": ttlMs must be a positive integer/,
+            );
+            expect(() => tier.setDefaultPolicy({ ttlMs })).toThrow(RangeError);
+            expect(
+                () => new RedisCacheTier(client, { defaultPolicy: { ttlMs } }),
+            ).toThrow(RangeError);
+        },
+    );
+
     it('has a static NAME identifier', () => {
         expect(RedisCacheTier.NAME).toBe('redis');
     });

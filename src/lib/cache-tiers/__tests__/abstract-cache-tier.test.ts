@@ -44,6 +44,20 @@ describe('AbstractCacheTier', () => {
         await expect(tier.get('ok')).resolves.toEqual({ hit: false });
     });
 
+    it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])(
+        'refuses a TTL of %s for a domain or as the default',
+        (ttlMs) => {
+            const tier = new StubCacheTier();
+
+            expect(() => tier.register('d', { ttlMs })).toThrow(RangeError);
+            expect(() => tier.setDefaultPolicy({ ttlMs })).toThrow(
+                /ttlMs must be a finite number >= 0/,
+            );
+            expect(tier.defaultPolicy).toEqual({ ttlMs: 1000 });
+            expect(() => tier.register('d', { ttlMs: 0 })).not.toThrow();
+        },
+    );
+
     it('replaces the default policy via setDefaultPolicy', () => {
         const tier = new StubCacheTier();
         tier.setDefaultPolicy({ ttlMs: 42 });

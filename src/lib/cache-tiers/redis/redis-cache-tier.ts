@@ -37,7 +37,7 @@ export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
         super();
         this.client = client;
         if (options?.defaultPolicy !== undefined) {
-            this.defaultPolicy = options.defaultPolicy;
+            this.setDefaultPolicy(options.defaultPolicy);
         }
 
         const operationTimeoutMs =
@@ -106,6 +106,19 @@ export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
         await this.withTimeout(domainName, 'delete', () =>
             this.client.delete(key),
         );
+    }
+
+    // Redis rejects a PX expiry that is zero, negative, or not an integer.
+    protected override assertValidPolicy(
+        policy: CachePolicy,
+        subject: string,
+    ): void {
+        const { ttlMs } = policy;
+        if (!(Number.isSafeInteger(ttlMs) && ttlMs > 0)) {
+            throw new RangeError(
+                `RedisCacheTier: invalid TTL for ${subject}: ttlMs must be a positive integer, got ${ttlMs}`,
+            );
+        }
     }
 
     private buildKey(domainName: string): string {

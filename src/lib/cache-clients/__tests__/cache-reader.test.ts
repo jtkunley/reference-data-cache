@@ -247,4 +247,22 @@ describe('CacheReader: loading', () => {
         );
         expect(load).toHaveBeenCalledTimes(1);
     });
+
+    it('refuses an invalid TTL in the factory options or on a domain', () => {
+        expect(() =>
+            createCacheReader({ inMemoryPolicy: { ttlMs: Number.NaN } }),
+        ).toThrow(RangeError);
+
+        const reader = createCacheReader();
+        expect(() =>
+            reader.register({
+                name: 'neg',
+                loader: { load: vi.fn() },
+                inMemoryPolicy: { ttlMs: -5 },
+            }),
+        ).toThrow(/Invalid TTL for domain "neg"/);
+        expect(() =>
+            reader.register({ name: 'neg', loader: { load: vi.fn() } }),
+        ).not.toThrow();
+    });
 });
