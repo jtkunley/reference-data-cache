@@ -27,6 +27,11 @@ export abstract class AbstractCacheTier implements CacheTier {
         this.policies.set(domainName, policy);
     }
 
+    /** Forgets a domain so its name can be registered again; unknown names are ignored. */
+    unregister(domainName: string): void {
+        this.policies.delete(domainName);
+    }
+
     abstract get<T>(domainName: string): Promise<CacheTierLookup<T>>;
     abstract set<T>(domainName: string, value: T): Promise<void>;
     abstract delete(domainName: string): Promise<void>;

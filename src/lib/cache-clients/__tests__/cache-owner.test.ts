@@ -281,6 +281,24 @@ describe('CacheOwner: core behaviour', () => {
         );
     });
 
+    it('leaves no partial registration when the shared tier refuses a domain', async () => {
+        const shared = new InMemoryCacheTier();
+        const owner = createCacheOwner({ sharedTier: shared });
+        vi.spyOn(shared, 'register').mockImplementationOnce(() => {
+            throw new Error('shared tier refused');
+        });
+        const domain: CacheDomain<string> = {
+            name: 'd',
+            loader: { load: vi.fn().mockResolvedValue('value') },
+        };
+
+        expect(() => owner.register(domain)).toThrow('shared tier refused');
+        await expect(owner.get('d')).rejects.toThrow(/is not registered/);
+
+        expect(() => owner.register(domain)).not.toThrow();
+        await expect(owner.get<string>('d')).resolves.toBe('value');
+    });
+
     it('rejects get for a domain that was never registered', async () => {
         const shared = new InMemoryCacheTier();
         const owner = createCacheOwner({ sharedTier: shared });

@@ -41,7 +41,13 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
         }
 
         this.registerInMemory(domain.name, inMemoryPolicy);
-        this.sharedTier.register(domain.name, sharedPolicy);
+        try {
+            this.sharedTier.register(domain.name, sharedPolicy);
+        } catch (error) {
+            // A failed register must leave nothing behind, so the caller can fix the cause and retry.
+            this.inMemoryTier.unregister(domain.name);
+            throw error;
+        }
         this.domains.set(domain.name, domain as CacheDomain<unknown>);
     }
 

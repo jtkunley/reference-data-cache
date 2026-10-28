@@ -114,6 +114,17 @@ describe('InMemoryCacheTier', () => {
         }
     });
 
+    it('discards the stored value when a domain is unregistered', async () => {
+        const tier = new InMemoryCacheTier();
+        tier.register('k', { ttlMs: 60_000 });
+        await tier.set('k', 'stale');
+
+        tier.unregister('k');
+        tier.register('k', { ttlMs: 60_000 });
+
+        await expect(tier.get('k')).resolves.toEqual({ hit: false });
+    });
+
     it('refuses a second registration of the same domain', () => {
         const tier = new InMemoryCacheTier();
         tier.register('d', { ttlMs: 1 });

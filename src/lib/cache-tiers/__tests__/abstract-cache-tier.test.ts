@@ -58,6 +58,19 @@ describe('AbstractCacheTier', () => {
         },
     );
 
+    it('frees a domain name again after unregister', async () => {
+        const tier = new StubCacheTier();
+        tier.register('d', { ttlMs: 1 });
+
+        tier.unregister('d');
+        tier.unregister('never-registered');
+
+        await expect(tier.get('d')).rejects.toThrow(
+            CacheDomainNotRegisteredError,
+        );
+        expect(() => tier.register('d', { ttlMs: 2 })).not.toThrow();
+    });
+
     it('replaces the default policy via setDefaultPolicy', () => {
         const tier = new StubCacheTier();
         tier.setDefaultPolicy({ ttlMs: 42 });

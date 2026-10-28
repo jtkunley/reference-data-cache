@@ -17,6 +17,11 @@ export class InMemoryCacheTier extends AbstractCacheTier implements CacheTier {
 
     private readonly entries = new Map<string, InMemoryCacheEntry>();
 
+    override unregister(domainName: string): void {
+        super.unregister(domainName);
+        this.entries.delete(domainName);
+    }
+
     async get<T>(domainName: string): Promise<CacheTierLookup<T>> {
         this.assertRegistered(domainName);
 
