@@ -30,7 +30,7 @@ A small, strongly typed read-through cache for Node.js services. Define what you
 ## Quick start
 
 ```ts
-import { createCacheReader } from 'cache-manager';
+import { createCacheReader } from '@jtkunley/cache-manager';
 
 interface Country {
     code: string;
@@ -140,7 +140,7 @@ import {
     createCacheOwner,
     createRedisCacheTierFromRedisV3,
     type CacheDomain,
-} from 'cache-manager';
+} from '@jtkunley/cache-manager';
 import redis from 'redis';
 
 interface Product {
@@ -196,7 +196,7 @@ interface SharedCacheClient {
 For the callback-based `redis` v3 package, use `createRedisCacheTierFromRedisV3(client, options)`. For promise-based clients, pass an adapter to the constructor directly. For example, with `redis` v4 or later:
 
 ```ts
-import { RedisCacheTier } from 'cache-manager';
+import { RedisCacheTier } from '@jtkunley/cache-manager';
 import { createClient } from 'redis';
 
 const client = await createClient({ url: process.env.REDIS_URL }).connect();
@@ -269,7 +269,7 @@ import {
     createCacheReader,
     type CacheDomain,
     type CacheReader,
-} from 'cache-manager';
+} from '@jtkunley/cache-manager';
 
 interface Country {
     code: string;

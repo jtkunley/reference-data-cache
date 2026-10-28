@@ -1,5 +1,5 @@
 {
-    "name": "cache-manager",
+    "name": "@jtkunley/cache-manager",
     "version": "1.0.0",
     "private": true,
     "description": "Typed cache clients (CacheReader, CacheOwner) with named domains, loaders, and pluggable CacheTier backends.",
@@ -8,6 +8,14 @@
         "redis",
         "typescript"
     ],
+    "homepage": "https://github.com/jtkunley/cache-manager#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jtkunley/cache-manager.git"
+    },
+    "bugs": {
+        "url": "https://github.com/jtkunley/cache-manager/issues"
+    },
     "license": "UNLICENSED",
     "type": "module",
     "exports": {
