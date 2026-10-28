@@ -161,6 +161,27 @@ describe('RedisCacheTier', () => {
         expect(client.set).not.toHaveBeenCalled();
     });
 
+    it.each([
+        ['a function', () => 1],
+        ['a symbol', Symbol('s')],
+        ['undefined', undefined],
+    ])('refuses to write %s, which has no JSON form', async (_label, value) => {
+        const client: SharedCacheClient = {
+            get: vi.fn(),
+            set: vi.fn().mockResolvedValue(undefined),
+            delete: vi.fn(),
+        };
+
+        const tier = new RedisCacheTier(client);
+        tier.register('d', { ttlMs: 100 });
+
+        await expect(tier.set('d', value)).rejects.toMatchObject({
+            name: 'CacheTierSerializationError',
+            domainName: 'd',
+        });
+        expect(client.set).not.toHaveBeenCalled();
+    });
+
     it('keeps the TypeError from JSON.stringify as the error cause, e.g. for a BigInt', async () => {
         const client: SharedCacheClient = {
             get: vi.fn(),

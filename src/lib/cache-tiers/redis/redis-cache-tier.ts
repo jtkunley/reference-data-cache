@@ -78,7 +78,7 @@ export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
     async set<T>(domainName: string, value: T): Promise<void> {
         const policy = this.getPolicy(domainName);
         const key = this.buildKey(domainName);
-        let payload: string;
+        let payload: string | undefined;
         try {
             payload = JSON.stringify(value);
         } catch (cause) {
@@ -86,6 +86,13 @@ export class RedisCacheTier extends AbstractCacheTier implements CacheTier {
                 domainName,
                 `RedisCacheTier: JSON.stringify failed for domain "${domainName}" (value is not JSON-serializable)`,
                 cause instanceof Error ? { cause } : undefined,
+            );
+        }
+        // JSON.stringify returns undefined, rather than throwing, for functions, symbols, and undefined.
+        if (payload === undefined) {
+            throw new CacheTierSerializationError(
+                domainName,
+                `RedisCacheTier: JSON.stringify produced no output for domain "${domainName}" (value has no JSON representation)`,
             );
         }
         await this.withTimeout(domainName, 'set', () =>
