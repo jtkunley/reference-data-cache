@@ -102,7 +102,7 @@ describe('CacheOwner: core behaviour', () => {
             owner.get<{ id: string }>('markets'),
         ]);
 
-        resolveLoad!({ id: 'x' });
+        resolveLoad({ id: 'x' });
 
         const results = await pending;
 
@@ -357,14 +357,14 @@ describe('CacheOwner: core behaviour', () => {
         const startedAfter = owner.get<string>('d');
         await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
 
-        resolvers[0]!('old');
+        resolvers[0]('old');
         await expect(startedBefore).resolves.toBe('old');
 
         const joinsNewLoad = owner.get<string>('d');
         await new Promise((resolve) => setTimeout(resolve, 0));
         expect(load).toHaveBeenCalledTimes(2);
 
-        resolvers[1]!('new');
+        resolvers[1]('new');
         await expect(startedAfter).resolves.toBe('new');
         await expect(joinsNewLoad).resolves.toBe('new');
 
@@ -736,6 +736,7 @@ describe('CacheOwner: shared-tier failures', () => {
                     },
                     { operationTimeoutMs: 100 },
                 ),
+                // eslint-disable-next-line @typescript-eslint/no-misused-promises -- a rejecting async callback is the case under test
                 onTierError: async () => {
                     throw new Error('metrics down');
                 },

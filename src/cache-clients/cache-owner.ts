@@ -50,7 +50,7 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
             this.inMemoryTier.unregister(domain.name);
             throw error;
         }
-        this.domains.set(domain.name, domain as CacheDomain<unknown>);
+        this.domains.set(domain.name, domain);
     }
 
     async get<T>(domainName: string): Promise<T> {

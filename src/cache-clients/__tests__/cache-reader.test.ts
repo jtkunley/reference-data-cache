@@ -133,7 +133,7 @@ describe('CacheReader: loading', () => {
             reader.get<number>('markets'),
         ]);
 
-        resolveLoad!(7);
+        resolveLoad(7);
 
         const results = await pending;
 
@@ -171,8 +171,8 @@ describe('CacheReader: loading', () => {
             reader.get<string>('b'),
         ]);
 
-        resolveA!('A');
-        resolveB!('B');
+        resolveA('A');
+        resolveB('B');
 
         await expect(pending).resolves.toEqual(['A', 'A', 'B', 'B']);
         expect(loadA).toHaveBeenCalledTimes(1);

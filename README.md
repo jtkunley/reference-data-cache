@@ -394,7 +394,7 @@ npm run check   # typecheck, lint, format check, and tests
 | `npm run test:watch`    | Run tests in watch mode.                             |
 | `npm run test:coverage` | Run tests with V8 coverage.                          |
 | `npm run typecheck`     | Type-check sources, tests, and config files.         |
-| `npm run lint`          | Lint with ESLint and typescript-eslint.              |
+| `npm run lint`          | Lint with type-aware ESLint (typescript-eslint).     |
 | `npm run format`        | Format the codebase with Prettier.                   |
 | `npm run build`         | Compile ESM output and type declarations to `dist/`. |
 
