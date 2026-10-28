@@ -332,6 +332,64 @@ describe('CacheOwner: core behaviour', () => {
         expect(load).toHaveBeenCalledTimes(2);
     });
 
+    it('invalidate stops a load already in progress from caching its result', async () => {
+        const shared = new InMemoryCacheTier();
+        shared.setDefaultPolicy({ ttlMs: 60 * 60_000 });
+        const owner = createCacheOwner({ sharedTier: shared });
+        const resolvers: Array<(value: string) => void> = [];
+        const load = vi.fn(
+            () => new Promise<string>((resolve) => resolvers.push(resolve)),
+        );
+        owner.register({ name: 'd', loader: { load } });
+
+        const startedBefore = owner.get<string>('d');
+        await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+        await owner.invalidate('d');
+
+        const startedAfter = owner.get<string>('d');
+        await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+
+        resolvers[0]!('old');
+        await expect(startedBefore).resolves.toBe('old');
+
+        const joinsNewLoad = owner.get<string>('d');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(load).toHaveBeenCalledTimes(2);
+
+        resolvers[1]!('new');
+        await expect(startedAfter).resolves.toBe('new');
+        await expect(joinsNewLoad).resolves.toBe('new');
+
+        expect(load).toHaveBeenCalledTimes(2);
+        await expect(owner.get<string>('d')).resolves.toBe('new');
+        await expect(shared.get('d')).resolves.toEqual({
+            hit: true,
+            value: 'new',
+        });
+    });
+
+    it('invalidate stops an L2 read already in progress from refilling L1', async () => {
+        let finishRead!: (value: string | null) => void;
+        const { owner, shared, load } = redisBackedOwner({
+            get: vi.fn(
+                () =>
+                    new Promise<string | null>(
+                        (resolve) => (finishRead = resolve),
+                    ),
+            ),
+        });
+
+        const reading = owner.get('d');
+        await vi.waitFor(() => expect(shared.get).toHaveBeenCalled());
+        await owner.invalidate('d');
+        finishRead(JSON.stringify({ id: 'old' }));
+        await expect(reading).resolves.toEqual({ id: 'old' });
+
+        vi.mocked(shared.get).mockResolvedValue(null);
+        await expect(owner.get('d')).resolves.toEqual({ id: 'fresh' });
+        expect(load).toHaveBeenCalledTimes(1);
+    });
+
     it('invalidate rejects a domain that was never registered', async () => {
         const shared = new InMemoryCacheTier();
         const owner = createCacheOwner({ sharedTier: shared });

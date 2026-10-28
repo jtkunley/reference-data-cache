@@ -71,8 +71,16 @@ export abstract class AbstractCacheClient {
         try {
             return await promise;
         } finally {
-            this.inFlightLoads.delete(domainName);
+            // A newer load may have replaced this one after forgetInFlightLoad; leave it in place.
+            if (this.inFlightLoads.get(domainName) === promise) {
+                this.inFlightLoads.delete(domainName);
+            }
         }
+    }
+
+    /** Makes the next miss start a fresh load instead of joining the one already running. */
+    protected forgetInFlightLoad(domainName: string): void {
+        this.inFlightLoads.delete(domainName);
     }
 
     /**

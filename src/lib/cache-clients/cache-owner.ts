@@ -20,6 +20,8 @@ import { AbstractCacheClient } from './abstract-cache-client.js';
 
 class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
     private readonly sharedTier: CacheTier;
+    /** Bumped by invalidate; work that began under an older generation must not write to the tiers. */
+    private readonly generations = new Map<string, number>();
 
     constructor(private readonly options: CacheOwnerOptions) {
         super('CacheOwner', options);
@@ -59,13 +61,18 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
             return inMemoryValue.value;
         }
 
+        const readGeneration = this.generationOf(domainName);
         const sharedValue = await this.readShared<T>(domainName);
         if (sharedValue.hit) {
-            await this.inMemoryTier.set(domainName, sharedValue.value);
+            if (this.generationOf(domainName) === readGeneration) {
+                await this.inMemoryTier.set(domainName, sharedValue.value);
+            }
             return sharedValue.value;
         }
 
         return this.runSingleFlight(domainName, async () => {
+            const loadGeneration = this.generationOf(domainName);
+
             // Re-check L1: another get could have populated it during our L2 round trip.
             const cached = await this.inMemoryTier.get<T>(domainName);
             if (cached.hit) {
@@ -74,6 +81,9 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
 
             const loadedValue = await domain.loader.load();
             this.assertLoaderYieldedValue(domainName, loadedValue);
+            if (this.generationOf(domainName) !== loadGeneration) {
+                return loadedValue;
+            }
             void this.writeShared(domainName, loadedValue);
             await this.inMemoryTier.set(domainName, loadedValue);
             return loadedValue;
@@ -82,6 +92,9 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
 
     async invalidate(domainName: string): Promise<void> {
         this.assertDomainRegistered(domainName);
+        this.generations.set(domainName, this.generationOf(domainName) + 1);
+        this.forgetInFlightLoad(domainName);
+
         // L1 is cleared twice: up front, since the L2 delete can stall, and again afterwards, in case a concurrent get repopulated L1 from L2.
         await this.inMemoryTier.delete(domainName);
         try {
@@ -92,6 +105,10 @@ class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {
         } finally {
             await this.inMemoryTier.delete(domainName);
         }
+    }
+
+    private generationOf(domainName: string): number {
+        return this.generations.get(domainName) ?? 0;
     }
 
     private async readShared<T>(
