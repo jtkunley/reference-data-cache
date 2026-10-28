@@ -1,20 +1,22 @@
 {
-    "name": "@jtkunley/cache-manager",
+    "name": "@jtkunley/reference-data-cache",
     "version": "1.0.0",
     "private": true,
-    "description": "Typed cache clients (CacheReader, CacheOwner) with named domains, loaders, and pluggable CacheTier backends.",
+    "description": "Typed read-through cache for reference data, with in-memory and Redis-backed tiers, single-flight loading, and graceful degradation.",
     "keywords": [
         "cache",
+        "reference-data",
+        "read-through",
         "redis",
         "typescript"
     ],
-    "homepage": "https://github.com/jtkunley/cache-manager#readme",
+    "homepage": "https://github.com/jtkunley/reference-data-cache#readme",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/jtkunley/cache-manager.git"
+        "url": "git+https://github.com/jtkunley/reference-data-cache.git"
     },
     "bugs": {
-        "url": "https://github.com/jtkunley/cache-manager/issues"
+        "url": "https://github.com/jtkunley/reference-data-cache/issues"
     },
     "license": "MIT",
     "type": "module",

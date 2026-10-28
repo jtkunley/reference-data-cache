@@ -11,7 +11,8 @@
 
 ### Changed
 
-- The package is now published as `@jtkunley/cache-manager` under the MIT license.
+- The package is now named `@jtkunley/reference-data-cache` and licensed under MIT.
+- Redis keys use the prefix `reference-data-cache` (previously `cache-manager`), so entries written by 1.0.0 are not read and expire on their own.
 - Clients throw `CacheDomainAlreadyRegisteredError` and `CacheDomainNotRegisteredError` (previously plain `Error`), matching the tiers. Both errors expose `domainName`; messages are unchanged.
 
 ### Added

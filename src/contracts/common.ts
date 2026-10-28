@@ -1,4 +1,4 @@
-export const CACHE_KEY_PREFIX = 'cache-manager';
+export const CACHE_KEY_PREFIX = 'reference-data-cache';
 
 /** Increment whenever `RedisCacheTier` changes its stored format in a way old Redis entries can't be read with; this moves keys to a fresh namespace. Record the change in the CHANGELOG (see README, Development). */
 export const CACHE_KEY_VERSION = 'v1';

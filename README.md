@@ -1,9 +1,11 @@
-# cache-manager
+# reference-data-cache
 
-[![CI](https://github.com/jtkunley/cache-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/cache-manager/actions/workflows/ci.yml)
+[![CI](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A small, strongly typed read-through cache for Node.js services. Define what you want cached once, as a named **domain** with a loader, and the library takes care of lookups, expiry, concurrent-miss deduplication, and (optionally) a shared Redis layer that degrades gracefully when Redis misbehaves.
+A small, strongly typed read-through cache for **reference data** in Node.js services: the slowly changing datasets, such as countries, currencies, product catalogues, or configuration, that many requests read and few write. Register each dataset once as a named **domain** with a loader, and the library takes care of lookups, expiry, concurrent-miss deduplication, and (optionally) a shared Redis layer that degrades gracefully when Redis misbehaves.
+
+It is deliberately not a general key-value cache. Each domain holds a single value, the whole dataset, which is loaded, expired, and invalidated as a unit; there are no per-key entries, size limits, or eviction.
 
 ## Features
 
@@ -33,7 +35,7 @@ A small, strongly typed read-through cache for Node.js services. Define what you
 ## Quick start
 
 ```ts
-import { createCacheReader } from '@jtkunley/cache-manager';
+import { createCacheReader } from '@jtkunley/reference-data-cache';
 
 interface Country {
     code: string;
@@ -143,7 +145,7 @@ import {
     createCacheOwner,
     createRedisCacheTierFromRedisV3,
     type CacheDomain,
-} from '@jtkunley/cache-manager';
+} from '@jtkunley/reference-data-cache';
 import redis from 'redis';
 
 interface Product {
@@ -177,10 +179,10 @@ await owner.invalidate('products');
 
 ## Storage tiers
 
-| Tier                | Default TTL | Characteristics                                                                                                                                                                           |
-| ------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `InMemoryCacheTier` | 5 minutes   | Holds one entry per domain in a `Map`; no size limit. Suited to a modest, fixed set of domains.                                                                                           |
-| `RedisCacheTier`    | 12 hours    | Stores JSON under `cache-manager:v1:<domain>`. Each call times out after `operationTimeoutMs` (500 ms by default). TTLs must be positive integers, since they become a Redis `PX` expiry. |
+| Tier                | Default TTL | Characteristics                                                                                                                                                                                  |
+| ------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `InMemoryCacheTier` | 5 minutes   | Holds one entry per domain in a `Map`; no size limit. Suited to a modest, fixed set of domains.                                                                                                  |
+| `RedisCacheTier`    | 12 hours    | Stores JSON under `reference-data-cache:v1:<domain>`. Each call times out after `operationTimeoutMs` (500 ms by default). TTLs must be positive integers, since they become a Redis `PX` expiry. |
 
 `InMemoryCacheTier` can also act as the shared tier of a `CacheOwner`, which is handy in tests and local development.
 
@@ -199,7 +201,7 @@ interface SharedCacheClient {
 For the callback-based `redis` v3 package, use `createRedisCacheTierFromRedisV3(client, options)`. For promise-based clients, pass an adapter to the constructor directly. For example, with `redis` v4 or later:
 
 ```ts
-import { RedisCacheTier } from '@jtkunley/cache-manager';
+import { RedisCacheTier } from '@jtkunley/reference-data-cache';
 import { createClient } from 'redis';
 
 const client = await createClient({ url: process.env.REDIS_URL }).connect();
@@ -272,7 +274,7 @@ import {
     createCacheReader,
     type CacheDomain,
     type CacheReader,
-} from '@jtkunley/cache-manager';
+} from '@jtkunley/reference-data-cache';
 
 interface Country {
     code: string;
@@ -364,7 +366,7 @@ Storage errors are thrown by `RedisCacheTier` and also carry `domainName`. `Cach
 - **L2 is JSON.** Values round-trip through `JSON.stringify` / `JSON.parse`, so `Date`, `Map`, `Set`, and class instances do not survive an L2 hit unchanged. Cache plain data.
 - **Type arguments are trusted.** `get<T>(name)` does not check that `T` matches the type the domain was registered with; the compiler takes the caller's word. The [typed facade](#typed-facade) pattern keeps each name paired with its type in one place.
 - **Worst-case staleness is L1 + L2 TTL.** When an L2 hit is copied into L1 it starts a fresh L1 TTL, so without an `invalidate` a value can be served for up to the sum of both TTLs after it was loaded. Size TTLs, or invalidate on write, with that bound in mind.
-- **Versioned keys.** Redis keys include a format version (`cache-manager:v1:…`). Changing the stored format means bumping the version so old entries are simply ignored.
+- **Versioned keys.** Redis keys include a format version (`reference-data-cache:v1:…`). Changing the stored format means bumping the version so old entries are simply ignored.
 
 ## Project layout
 
