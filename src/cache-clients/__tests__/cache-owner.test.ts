@@ -1,8 +1,10 @@
 import type { CacheDomain, SharedCacheClient } from '../../contracts/common.js';
 import {
+    CacheDomainAlreadyRegisteredError,
+    CacheDomainNotRegisteredError,
     CacheTierCorruptValueError,
     CacheTierTimeoutError,
-} from '../../cache-tiers/cache-tier-errors.js';
+} from '../../errors.js';
 import { InMemoryCacheTier } from '../../cache-tiers/in-memory-cache-tier.js';
 import { RedisCacheTier } from '../../cache-tiers/redis/redis-cache-tier.js';
 import { createCacheOwner } from '../cache-owner.js';
@@ -279,6 +281,9 @@ describe('CacheOwner: core behaviour', () => {
         expect(() => owner.register(domain)).toThrow(
             /CacheOwner domain "dup" is already registered/,
         );
+        expect(() => owner.register(domain)).toThrow(
+            CacheDomainAlreadyRegisteredError,
+        );
     });
 
     it('leaves no partial registration when the shared tier refuses a domain', async () => {
@@ -305,6 +310,9 @@ describe('CacheOwner: core behaviour', () => {
 
         await expect(owner.get('missing')).rejects.toThrow(
             /CacheOwner domain "missing" is not registered/,
+        );
+        await expect(owner.invalidate('missing')).rejects.toBeInstanceOf(
+            CacheDomainNotRegisteredError,
         );
     });
 

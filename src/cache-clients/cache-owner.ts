@@ -15,7 +15,7 @@ import {
     CacheTierCorruptValueError,
     CacheTierSerializationError,
     CacheTierTimeoutError,
-} from '../cache-tiers/cache-tier-errors.js';
+} from '../errors.js';
 import { AbstractCacheClient } from './abstract-cache-client.js';
 
 class CacheOwnerImpl extends AbstractCacheClient implements CacheOwner {

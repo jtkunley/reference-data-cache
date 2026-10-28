@@ -12,7 +12,7 @@ import {
     CacheTierCorruptValueError,
     CacheTierSerializationError,
     CacheTierTimeoutError,
-} from '../cache-tier-errors.js';
+} from '../../errors.js';
 
 export const DEFAULT_REDIS_OPERATION_TIMEOUT_MS = 500;
 

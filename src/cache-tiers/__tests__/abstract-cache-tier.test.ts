@@ -3,7 +3,7 @@ import { AbstractCacheTier } from '../abstract-cache-tier.js';
 import {
     CacheDomainAlreadyRegisteredError,
     CacheDomainNotRegisteredError,
-} from '../cache-tier-errors.js';
+} from '../../errors.js';
 
 /** Bare-bones tier used only to test the registration checks in `AbstractCacheTier`. */
 class StubCacheTier extends AbstractCacheTier {

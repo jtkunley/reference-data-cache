@@ -12,10 +12,12 @@ export {
 export { createRedisCacheTierFromRedisV3 } from './cache-tiers/redis/create-redis-cache-tier-from-redis-v3.js';
 
 export {
+    CacheDomainAlreadyRegisteredError,
+    CacheDomainNotRegisteredError,
     CacheTierCorruptValueError,
     CacheTierSerializationError,
     CacheTierTimeoutError,
-} from './cache-tiers/cache-tier-errors.js';
+} from './errors.js';
 
 export type {
     CacheDomain,

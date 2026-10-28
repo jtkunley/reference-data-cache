@@ -6,7 +6,7 @@ import type {
 import {
     CacheDomainAlreadyRegisteredError,
     CacheDomainNotRegisteredError,
-} from './cache-tier-errors.js';
+} from '../errors.js';
 
 export abstract class AbstractCacheTier implements CacheTier {
     abstract defaultPolicy: CachePolicy;

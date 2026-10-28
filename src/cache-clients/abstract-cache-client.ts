@@ -4,6 +4,10 @@ import type {
     CachePolicy,
 } from '../contracts/common.js';
 import { InMemoryCacheTier } from '../cache-tiers/in-memory-cache-tier.js';
+import {
+    CacheDomainAlreadyRegisteredError,
+    CacheDomainNotRegisteredError,
+} from '../errors.js';
 
 /** Common base for the cache clients: holds registered domains and wires up the in-memory tier. */
 export abstract class AbstractCacheClient {
@@ -24,8 +28,9 @@ export abstract class AbstractCacheClient {
 
     protected assertDomainNameUnused(domainName: string): void {
         if (this.domains.has(domainName)) {
-            throw new Error(
-                `${this.clientLabel} domain "${domainName}" is already registered`,
+            throw new CacheDomainAlreadyRegisteredError(
+                domainName,
+                this.clientLabel,
             );
         }
     }
@@ -40,8 +45,9 @@ export abstract class AbstractCacheClient {
 
     protected assertDomainRegistered(domainName: string): void {
         if (!this.domains.has(domainName)) {
-            throw new Error(
-                `${this.clientLabel} domain "${domainName}" is not registered`,
+            throw new CacheDomainNotRegisteredError(
+                domainName,
+                this.clientLabel,
             );
         }
     }

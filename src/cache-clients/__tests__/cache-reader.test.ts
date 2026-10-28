@@ -1,4 +1,8 @@
 import type { CacheDomain } from '../../contracts/common.js';
+import {
+    CacheDomainAlreadyRegisteredError,
+    CacheDomainNotRegisteredError,
+} from '../../errors.js';
 import { createCacheReader } from '../cache-reader.js';
 
 describe('CacheReader: registration and expiry', () => {
@@ -67,6 +71,9 @@ describe('CacheReader: registration and expiry', () => {
         await expect(reader.get('missing')).rejects.toThrow(
             /CacheReader domain "missing" is not registered/,
         );
+        await expect(reader.get('missing')).rejects.toBeInstanceOf(
+            CacheDomainNotRegisteredError,
+        );
     });
 
     it('refuses a second registration of the same domain', () => {
@@ -80,6 +87,9 @@ describe('CacheReader: registration and expiry', () => {
 
         expect(() => reader.register(domain)).toThrow(
             /CacheReader domain "dup" is already registered/,
+        );
+        expect(() => reader.register(domain)).toThrow(
+            CacheDomainAlreadyRegisteredError,
         );
     });
 });

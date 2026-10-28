@@ -1,7 +1,7 @@
 import {
     CacheDomainAlreadyRegisteredError,
     CacheDomainNotRegisteredError,
-} from '../cache-tier-errors.js';
+} from '../../errors.js';
 import { InMemoryCacheTier } from '../in-memory-cache-tier.js';
 
 describe('InMemoryCacheTier', () => {

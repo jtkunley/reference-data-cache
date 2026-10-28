@@ -9,7 +9,7 @@ import {
     CacheTierCorruptValueError,
     CacheTierSerializationError,
     CacheTierTimeoutError,
-} from '../../cache-tier-errors.js';
+} from '../../../errors.js';
 import {
     DEFAULT_REDIS_OPERATION_TIMEOUT_MS,
     RedisCacheTier,

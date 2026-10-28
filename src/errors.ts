@@ -1,15 +1,23 @@
-import type { CacheTierOperation } from '../contracts/common.js';
+import type { CacheTierOperation } from './contracts/common.js';
 
+/** `context` names the component that raised the error, e.g. `'CacheOwner'`; it only affects the message. */
 export class CacheDomainAlreadyRegisteredError extends Error {
-    constructor(domainName: string) {
-        super(`Cache domain "${domainName}" is already registered`);
+    constructor(
+        readonly domainName: string,
+        context = 'Cache',
+    ) {
+        super(`${context} domain "${domainName}" is already registered`);
         this.name = 'CacheDomainAlreadyRegisteredError';
     }
 }
 
+/** `context` names the component that raised the error, e.g. `'CacheOwner'`; it only affects the message. */
 export class CacheDomainNotRegisteredError extends Error {
-    constructor(domainName: string) {
-        super(`Cache domain "${domainName}" is not registered`);
+    constructor(
+        readonly domainName: string,
+        context = 'Cache',
+    ) {
+        super(`${context} domain "${domainName}" is not registered`);
         this.name = 'CacheDomainNotRegisteredError';
     }
 }

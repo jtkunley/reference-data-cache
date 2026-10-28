@@ -64,7 +64,7 @@ const countries = await cache.get<Country[]>('countries');
 
 A few rules apply to every client:
 
-- Domain names are unique per client. Registering a name twice throws, and so does calling `get` for a name that was never registered.
+- Domain names are unique per client. Registering a name twice throws `CacheDomainAlreadyRegisteredError`; calling `get` or `invalidate` for a name that was never registered throws `CacheDomainNotRegisteredError`.
 - A loader must resolve to a real value or throw. Resolving to `null` or `undefined` is treated as an error, which keeps "nothing cached" and "cached nothing" from being confused.
 - A domain without its own policy uses the tier's default TTL.
 - TTLs are validated when a domain is registered or a default is set: `ttlMs` must be a finite number of zero or more (Redis requires a positive integer). Anything else throws a `RangeError`, and a failed `register` leaves nothing behind, so it can simply be retried.
@@ -324,7 +324,14 @@ const owner = createCacheOwner({ sharedTier: new InMemoryCacheTier() });
 
 ### Errors
 
-All are thrown by `RedisCacheTier`. `CacheOwner` reports them through `onTierError`; `get` never rejects with them, while `invalidate` rethrows a failed L2 delete.
+Registration errors are thrown by both clients and tiers. Both carry a `domainName` property.
+
+| Export                              | Raised when                                                           |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| `CacheDomainAlreadyRegisteredError` | A domain name is registered a second time on the same client or tier. |
+| `CacheDomainNotRegisteredError`     | An operation names a domain that was never registered.                |
+
+Storage errors are thrown by `RedisCacheTier` and also carry `domainName`. `CacheOwner` reports them through `onTierError`: `get` never rejects with them, while `invalidate` rethrows a failed L2 delete.
 
 | Export                        | Raised when                                               | `kind`          |
 | ----------------------------- | --------------------------------------------------------- | --------------- |
@@ -357,10 +364,10 @@ All are thrown by `RedisCacheTier`. `CacheOwner` reports them through `onTierErr
 ```text
 src/
 ├── index.ts                     Public entry point
+├── errors.ts                    Error types raised by clients and tiers
 ├── contracts/                   Interfaces and shared types
 ├── cache-clients/               CacheReader, CacheOwner, and their shared base class
 └── cache-tiers/
-    ├── cache-tier-errors.ts     Error types raised by tiers
     ├── abstract-cache-tier.ts
     ├── in-memory-cache-tier.ts
     └── redis/                   RedisCacheTier and the redis v3 adapter
