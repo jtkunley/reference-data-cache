@@ -1,5 +1,8 @@
 # cache-manager
 
+[![CI](https://github.com/jtkunley/cache-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/cache-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A small, strongly typed read-through cache for Node.js services. Define what you want cached once, as a named **domain** with a loader, and the library takes care of lookups, expiry, concurrent-miss deduplication, and (optionally) a shared Redis layer that degrades gracefully when Redis misbehaves.
 
 ## Features
