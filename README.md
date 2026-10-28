@@ -357,14 +357,13 @@ All are thrown by `RedisCacheTier`. `CacheOwner` reports them through `onTierErr
 ```text
 src/
 ├── index.ts                     Public entry point
-└── lib/
-    ├── contracts/               Interfaces and shared types
-    ├── cache-clients/           CacheReader, CacheOwner, and their shared base class
-    └── cache-tiers/
-        ├── cache-tier-errors.ts Error types raised by tiers
-        ├── abstract-cache-tier.ts
-        ├── in-memory-cache-tier.ts
-        └── redis/               RedisCacheTier and the redis v3 adapter
+├── contracts/                   Interfaces and shared types
+├── cache-clients/               CacheReader, CacheOwner, and their shared base class
+└── cache-tiers/
+    ├── cache-tier-errors.ts     Error types raised by tiers
+    ├── abstract-cache-tier.ts
+    ├── in-memory-cache-tier.ts
+    └── redis/                   RedisCacheTier and the redis v3 adapter
 ```
 
 Tests sit next to the code they cover, in `__tests__` folders.
@@ -390,4 +389,4 @@ npm run check   # typecheck, lint, format check, and tests
 
 ### Changing the Redis format
 
-If you change how `RedisCacheTier` serializes values in a way existing entries can't be read, bump `CACHE_KEY_VERSION` in `src/lib/contracts/common.ts` and record it in `CHANGELOG.md`. New keys are written under the new version, and old ones expire on their own.
+If you change how `RedisCacheTier` serializes values in a way existing entries can't be read, bump `CACHE_KEY_VERSION` in `src/contracts/common.ts` and record it in `CHANGELOG.md`. New keys are written under the new version, and old ones expire on their own.
