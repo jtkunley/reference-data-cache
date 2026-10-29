@@ -1,4 +1,4 @@
-# reference-data-cache
+# @jtkunley/reference-data-cache
 
 [![CI](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -19,6 +19,7 @@ It is deliberately not a general key-value cache. Each domain holds a single val
 
 ## Contents
 
+- [Install](#install)
 - [Quick start](#quick-start)
 - [Core concepts](#core-concepts)
 - [Choosing a client](#choosing-a-client)
@@ -31,6 +32,14 @@ It is deliberately not a general key-value cache. Each domain holds a single val
 - [Design notes](#design-notes)
 - [Project layout](#project-layout)
 - [Development](#development)
+
+## Install
+
+```sh
+npm i @jtkunley/reference-data-cache
+```
+
+Requires Node 24 or later. Ships with TypeScript types.
 
 ## Quick start
 

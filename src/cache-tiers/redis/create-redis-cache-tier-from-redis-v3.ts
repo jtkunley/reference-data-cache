@@ -39,7 +39,7 @@ export interface RedisV3Client {
  * Usage:
  * ```ts
  * import redis from 'redis';
- * import { createRedisCacheTierFromRedisV3 } from '...';
+ * import { createRedisCacheTierFromRedisV3 } from '@jtkunley/reference-data-cache';
  *
  * const client = redis.createClient();
  * const tier = createRedisCacheTierFromRedisV3(client);

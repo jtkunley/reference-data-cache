@@ -1,7 +1,6 @@
 {
     "name": "@jtkunley/reference-data-cache",
     "version": "1.0.0",
-    "private": true,
     "description": "Typed read-through cache for reference data, with in-memory and Redis-backed tiers, single-flight loading, and graceful degradation.",
     "keywords": [
         "cache",
@@ -19,12 +18,16 @@
         "url": "https://github.com/jtkunley/reference-data-cache/issues"
     },
     "license": "MIT",
+    "author": "jtkunley (https://github.com/jtkunley)",
     "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        }
+        },
+        "./package.json": "./package.json"
     },
     "files": [
         "dist",
@@ -36,7 +39,7 @@
         "node": ">=24"
     },
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
+        "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
@@ -44,7 +47,8 @@
         "lint": "eslint .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+        "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
+        "prepack": "npm run build"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
@@ -57,5 +61,8 @@
         "typescript": "~6.0.3",
         "typescript-eslint": "^8.72.1",
         "vitest": "^5.0.5"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
