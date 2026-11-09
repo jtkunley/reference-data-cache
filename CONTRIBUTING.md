@@ -12,6 +12,35 @@ npm install
 
 Use Node.js 22 or later (`.nvmrc` pins the development version).
 
+## Project layout
+
+`src/index.ts` is the only public entry point; everything else lives under `src/lib/`,
+grouped by concern. Tests mirror the same groups under `test/`.
+
+```text
+src/
+  index.ts                  public exports
+  lib/
+    clients/                CacheReader and CacheOwner
+      reader.ts             local-only client and single-flight loading
+      owner.ts              shared-tier reads, background writes, invalidation
+      domain-state.ts       per-domain local entry, in-flight refresh, generation
+      tier-error-reporting.ts  onTierError classification and containment
+      types.ts              domain, loader, client, and event types
+    tiers/                  storage tiers
+      types.ts              CacheTier contract
+      in-memory-tier.ts
+      redis/
+        redis-tier.ts       RedisCacheTier
+        redis-v3.ts         callback-client adapter
+        deadline.ts         per-operation timeouts
+        json.ts             serialization and corrupt-value detection
+        keys.ts             key naming
+    policy/                 CachePolicy, defaults, and validation
+    errors/                 registration and tier error classes
+    util/                   small shared helpers
+```
+
 ## Workflow
 
 - `npm test` runs the test suite; `npm run test:watch` reruns on change.

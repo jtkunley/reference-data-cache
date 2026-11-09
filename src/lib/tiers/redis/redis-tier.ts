@@ -1,20 +1,15 @@
 import {
   CacheDomainAlreadyRegisteredError,
   CacheDomainNotRegisteredError,
-  CacheTierCorruptValueError,
-  CacheTierSerializationError,
-  CacheTierTimeoutError,
-} from './errors.js';
-import { assertDomainName, attempt } from './internal.js';
-import { redisPolicy } from './policy.js';
-import type { CachePolicy, CacheTier, CacheTierOperation, CacheTierResult } from './types.js';
-
-/** Deadline applied to each Redis read, write, and delete unless overridden. */
-export const DEFAULT_REDIS_OPERATION_TIMEOUT_MS = 500;
-
-const DEFAULT_REDIS_TTL_MS = 43_200_000;
-const MAX_TIMER_MS = 2_147_483_647;
-const KEY_PREFIX = 'reference-data-cache:v1:';
+} from '../../errors/registration-errors.js';
+import { DEFAULT_REDIS_POLICY } from '../../policy/defaults.js';
+import type { CachePolicy } from '../../policy/types.js';
+import { redisPolicy } from '../../policy/validate.js';
+import { assertDomainName } from '../../util/domain-name.js';
+import type { CacheTier, CacheTierResult } from '../types.js';
+import { validateTimeout, withDeadline } from './deadline.js';
+import { deserialize, serialize } from './json.js';
+import { redisKey } from './keys.js';
 
 /**
  * The minimal promise-based client {@link RedisCacheTier} needs. Wrap your Redis client
@@ -55,7 +50,7 @@ export class RedisCacheTier implements CacheTier {
     this.#client = client;
     this.#defaultPolicy =
       options.defaultPolicy === undefined
-        ? Object.freeze({ ttlMs: DEFAULT_REDIS_TTL_MS })
+        ? DEFAULT_REDIS_POLICY
         : redisPolicy(options.defaultPolicy, 'defaultPolicy');
     this.#timeoutMs = validateTimeout(options.operationTimeoutMs);
   }
@@ -84,20 +79,11 @@ export class RedisCacheTier implements CacheTier {
 
   async get<T = unknown>(domainName: string): Promise<CacheTierResult<T>> {
     this.#policy(domainName);
-    const raw: unknown = await this.#call(domainName, 'get', () =>
-      this.#client.get(KEY_PREFIX + domainName),
+    const raw: unknown = await withDeadline(domainName, 'get', this.#timeoutMs, () =>
+      this.#client.get(redisKey(domainName)),
     );
     if (raw === null) return { hit: false };
-    if (typeof raw !== 'string') {
-      throw new CacheTierCorruptValueError(domainName, {
-        cause: new TypeError(`expected a string from Redis, got ${typeof raw}`),
-      });
-    }
-    try {
-      return { hit: true, value: JSON.parse(raw) as T };
-    } catch (error) {
-      throw new CacheTierCorruptValueError(domainName, { cause: error });
-    }
+    return { hit: true, value: deserialize(domainName, raw) as T };
   }
 
   set(domainName: string, value: unknown): Promise<void> {
@@ -109,14 +95,16 @@ export class RedisCacheTier implements CacheTier {
     } catch (error) {
       return Promise.reject(error);
     }
-    return this.#call(domainName, 'set', () =>
-      this.#client.set(KEY_PREFIX + domainName, payload, ttlMs),
+    return withDeadline(domainName, 'set', this.#timeoutMs, () =>
+      this.#client.set(redisKey(domainName), payload, ttlMs),
     );
   }
 
   async delete(domainName: string): Promise<void> {
     this.#policy(domainName);
-    await this.#call(domainName, 'delete', () => this.#client.delete(KEY_PREFIX + domainName));
+    await withDeadline(domainName, 'delete', this.#timeoutMs, () =>
+      this.#client.delete(redisKey(domainName)),
+    );
   }
 
   #policy(domainName: string): CachePolicy {
@@ -124,58 +112,4 @@ export class RedisCacheTier implements CacheTier {
     if (policy === undefined) throw new CacheDomainNotRegisteredError(domainName);
     return policy;
   }
-
-  #call<T>(domainName: string, operation: CacheTierOperation, fn: () => Promise<T>): Promise<T> {
-    const timeoutMs = this.#timeoutMs;
-    return new Promise<T>((resolve, reject) => {
-      let settled = false;
-      const timer = setTimeout(() => {
-        settled = true;
-        reject(new CacheTierTimeoutError(domainName, operation, timeoutMs));
-      }, timeoutMs);
-      attempt(fn).then(
-        (value) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error: unknown) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          reject(error);
-        },
-      );
-    });
-  }
-}
-
-function serialize(domainName: string, value: unknown): string {
-  let payload: unknown;
-  try {
-    payload = JSON.stringify(value);
-  } catch (error) {
-    throw new CacheTierSerializationError(
-      domainName,
-      error instanceof Error ? { cause: error } : undefined,
-    );
-  }
-  if (typeof payload !== 'string') throw new CacheTierSerializationError(domainName);
-  return payload;
-}
-
-function validateTimeout(timeoutMs: number | undefined): number {
-  if (timeoutMs === undefined) return DEFAULT_REDIS_OPERATION_TIMEOUT_MS;
-  if (
-    typeof timeoutMs !== 'number' ||
-    !Number.isFinite(timeoutMs) ||
-    timeoutMs <= 0 ||
-    timeoutMs > MAX_TIMER_MS
-  ) {
-    throw new RangeError(
-      `operationTimeoutMs must be a finite number in (0, ${String(MAX_TIMER_MS)}], got ${String(timeoutMs)}`,
-    );
-  }
-  return timeoutMs;
 }

@@ -7,8 +7,8 @@ import {
   CacheTierTimeoutError,
   DEFAULT_REDIS_OPERATION_TIMEOUT_MS,
   RedisCacheTier,
-} from '../src/index.js';
-import { FakeRedis, flush } from './helpers.js';
+} from '../../src/index.js';
+import { FakeRedis, flush } from '../support/helpers.js';
 
 const KEY = 'reference-data-cache:v1:Countries';
 

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { CacheLoader, RedisCacheClient } from '../src/index.js';
+import type { CacheLoader, RedisCacheClient } from '../../src/index.js';
 
 export interface Deferred<T> {
   promise: Promise<T>;

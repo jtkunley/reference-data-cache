@@ -5,7 +5,7 @@ import {
   CacheTierCorruptValueError,
   CacheTierSerializationError,
   CacheTierTimeoutError,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 describe('errors', () => {
   it.each([

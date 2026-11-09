@@ -3,8 +3,8 @@ import {
   CacheDomainAlreadyRegisteredError,
   CacheDomainNotRegisteredError,
   createCacheReader,
-} from '../src/index.js';
-import { deferred, flush, loaderOf } from './helpers.js';
+} from '../../src/index.js';
+import { deferred, flush, loaderOf } from '../support/helpers.js';
 
 describe('createCacheReader', () => {
   describe('registration', () => {

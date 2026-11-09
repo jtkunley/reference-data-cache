@@ -4,7 +4,7 @@ import {
   RedisCacheTier,
   createRedisCacheTierFromRedisV3,
   type RedisV3Client,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 type Callback<T> = (error: Error | null, reply?: T) => void;
 

@@ -3,7 +3,7 @@ import {
   CacheDomainAlreadyRegisteredError,
   CacheDomainNotRegisteredError,
   InMemoryCacheTier,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 describe('InMemoryCacheTier', () => {
   beforeEach(() => {

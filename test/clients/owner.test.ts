@@ -10,8 +10,8 @@ import {
   createCacheOwner,
   type CacheTier,
   type CacheTierErrorEvent,
-} from '../src/index.js';
-import { FakeRedis, deferred, flush, loaderOf } from './helpers.js';
+} from '../../src/index.js';
+import { FakeRedis, deferred, flush, loaderOf } from '../support/helpers.js';
 
 function setup(tier: CacheTier = new InMemoryCacheTier()) {
   const events: CacheTierErrorEvent[] = [];

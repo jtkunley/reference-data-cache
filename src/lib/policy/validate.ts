@@ -1,7 +1,5 @@
 import type { CachePolicy } from './types.js';
 
-export const DEFAULT_IN_MEMORY_TTL_MS = 300_000;
-
 function readTtl(policy: unknown, label: string): number {
   if (typeof policy !== 'object' || policy === null) {
     throw new TypeError(`${label} must be an object with a numeric ttlMs`);

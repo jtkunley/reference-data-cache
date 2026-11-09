@@ -4,8 +4,8 @@ import {
   InMemoryCacheTier,
   createCacheOwner,
   type CacheTierErrorEvent,
-} from '../src/index.js';
-import { deferred, flush, loaderOf } from './helpers.js';
+} from '../../src/index.js';
+import { deferred, flush, loaderOf } from '../support/helpers.js';
 
 function setup() {
   const tier = new InMemoryCacheTier();

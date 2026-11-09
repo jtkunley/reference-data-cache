@@ -1,7 +1,12 @@
-import { CacheDomainAlreadyRegisteredError, CacheDomainNotRegisteredError } from './errors.js';
-import { assertDomainName } from './internal.js';
-import { DEFAULT_IN_MEMORY_TTL_MS, localPolicy } from './policy.js';
-import type { CachePolicy, CacheTier, CacheTierResult } from './types.js';
+import {
+  CacheDomainAlreadyRegisteredError,
+  CacheDomainNotRegisteredError,
+} from '../errors/registration-errors.js';
+import { DEFAULT_IN_MEMORY_POLICY } from '../policy/defaults.js';
+import type { CachePolicy } from '../policy/types.js';
+import { localPolicy } from '../policy/validate.js';
+import { assertDomainName } from '../util/domain-name.js';
+import type { CacheTier, CacheTierResult } from './types.js';
 
 /** Options for {@link InMemoryCacheTier}. */
 export interface InMemoryCacheTierOptions {
@@ -27,7 +32,7 @@ export class InMemoryCacheTier implements CacheTier {
   constructor(options: InMemoryCacheTierOptions = {}) {
     this.#defaultPolicy =
       options.defaultPolicy === undefined
-        ? Object.freeze({ ttlMs: DEFAULT_IN_MEMORY_TTL_MS })
+        ? DEFAULT_IN_MEMORY_POLICY
         : localPolicy(options.defaultPolicy, 'defaultPolicy');
   }
 
