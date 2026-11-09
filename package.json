@@ -1,0 +1,76 @@
+{
+  "name": "reference-data-cache",
+  "version": "1.0.0",
+  "description": "Named, read-through caching for reference data in Node.js, with a local in-memory tier, an optional shared Redis tier, single-flight loading, and graceful degradation when the shared tier fails.",
+  "keywords": [
+    "cache",
+    "reference-data",
+    "redis",
+    "in-memory",
+    "read-through",
+    "single-flight",
+    "ttl",
+    "typescript"
+  ],
+  "homepage": "https://github.com/jtkunley/reference-data-cache#readme",
+  "bugs": {
+    "url": "https://github.com/jtkunley/reference-data-cache/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtkunley/reference-data-cache.git"
+  },
+  "license": "MIT",
+  "author": "jtkunley",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "prepublishOnly": "npm run clean && npm run check && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "tsup": "^9.0.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}

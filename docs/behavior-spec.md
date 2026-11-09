@@ -1,0 +1,107 @@
+- Provide named reference-data caching through a local-only reader and an owner that also uses a caller-supplied shared tier.
+- Expose `createCacheReader(options?)`, `createCacheOwner(options)`, `InMemoryCacheTier`, `RedisCacheTier`, and `createRedisCacheTierFromRedisV3(client, options?)`.
+- Export the public domain, loader, policy, client, tier, Redis adapter, error-event, and error types needed to use or supply these interfaces.
+- Require no particular Redis client package. Accept compatible clients through the supplied interfaces.
+- A reader exposes synchronous `register(domain)` and asynchronous `get<T>(domainName)`. An owner additionally exposes `invalidate(domainName): Promise<void>` and requires a `sharedTier`.
+- Treat each domain as one named cached value. Its loader exposes `load(): Promise<T>` without lookup arguments.
+- Accept domain configuration containing `name`, `loader`, optional `inMemoryPolicy`, and optional `sharedPolicy`. A policy contains `ttlMs`.
+- Identify domains by their exact, case-sensitive names. Keep registrations, local values, and concurrent-load coordination independent between client instances.
+- Register domains without invoking loaders or performing shared-cache reads or writes.
+- Reject duplicate registration synchronously with `CacheDomainAlreadyRegisteredError`. Reject reads and invalidations of unknown domains with `CacheDomainNotRegisteredError`.
+- Failed registration must not leave the client partially registered. Permit retry after correcting the failure; supplied tiers must likewise avoid retaining partial registration when their registration fails.
+- Keep caller-owned domain identifiers and loader configuration stable after registration. Loaders may read changing source data.
+- Treat generic result types as caller assertions. Do not perform runtime schema validation of loader or cached values.
+- Accept loader results such as `false`, `0`, empty strings, empty arrays, and empty objects.
+- Reject loader results of `null` or `undefined` with an error identifying the client, domain, and invalid result. Do not cache those loader results.
+- Propagate loader throws and rejected promises to waiting callers without converting them into cache misses or shared-tier error events.
+- After a failed load, permit a later read to attempt loading again. Do not cache failures or automatically retry within the failed read.
+
+- Default local TTL to 300,000 milliseconds. Let a client-level `inMemoryPolicy` replace that default and a domain-level policy override the client default.
+- For owners, use the domain’s `sharedPolicy` when supplied; otherwise use the shared tier’s current default policy at registration.
+- Reject owner registration when its effective local TTL exceeds its effective shared TTL. Equal TTLs are permitted.
+- Copy and freeze accepted policies so later mutation of caller-owned policy objects cannot change registered behavior or bypass validation.
+- Changing a tier’s default policy affects future registrations using that default, not previously registered domains.
+- Local TTLs must be finite numbers greater than or equal to zero. Fractional TTLs are permitted; zero means the entry is immediately expired.
+- Measure local expiry from the latest successful write. Replacing an entry restarts its TTL; reading it does not extend its lifetime.
+- Treat an entry as expired when the current time is equal to or later than its expiry time. Never return an expired entry.
+- Refresh values on demand after misses or expiry. No scheduled refresh, stale-while-revalidate behavior, capacity limit, or eager background eviction is required.
+
+- A reader returns a valid local value without invoking its loader. On a miss, load the value, populate local cache, and return it.
+- Concurrent misses for the same domain within one client must share one refresh and its result or failure. Different domains must remain independently loadable.
+- Avoid redundant refreshes when another refresh fills local cache between an earlier miss and the decision to begin loading.
+- Limit refresh sharing to the client instance. Do not promise cross-process or cross-client suppression of duplicate loads.
+- An owner checks local cache before consulting the shared tier. A local hit must avoid both the shared tier and loader.
+- On an owner’s local miss, share the shared-tier read and any subsequent loader call across concurrent reads for that domain.
+- On a shared hit, return its value and populate local cache without invoking the loader.
+- A shared-to-local promotion starts a full local TTL. It does not preserve or inspect the shared entry’s remaining lifetime, so local validity may extend beyond that shared entry’s expiry.
+- If the shared tier misses or its read fails, invoke the loader. Report shared read failures through the optional error hook.
+- After a valid loader result, populate local cache and attempt to populate the shared tier. Do not wait for completion of the asynchronous shared write before returning the value.
+- A failed or timed-out shared write must not reject an otherwise successful read or discard its local value.
+- A successful owner read does not confirm that the value has reached shared storage. Shared-value preparation may occur during the call, and no fixed read-latency guarantee is implied.
+- Preserve locally cached objects by reference rather than cloning or freezing them. Caller mutations can affect subsequent local reads.
+- Values passing through Redis follow JSON conversion rules and may lose object identity, prototypes, or non-JSON information. Callers requiring equivalent results across tiers must supply JSON-compatible data.
+
+- Accept an optional owner `onTierError(event)` hook for shared-tier failures.
+- Supply `{ domain, tier: 'shared', operation, kind, error }`, retaining the original failure value.
+- Support operations `get`, `set`, and `delete`. Classify typed timeout, serialization, and corrupt-value errors as `timeout`, `serialize`, and `corrupt-value`; classify other failures as `error`.
+- Invoke the hook once per failed shared-tier operation, not once per caller sharing that operation. Emit no failure event for an ordinary cache miss.
+- Ignore hook return values. Contain synchronous hook exceptions and rejected promises without changing cache results or producing unhandled rejections.
+- Treat synchronous throws from supplied tier operations consistently with rejected promises from those operations.
+- On a corrupt shared value, report the read failure, attempt deletion of the corrupt entry, and continue to the loader without waiting for deletion.
+- Report failure of that background deletion separately. A failed deletion must not prevent loading or returning fresh source data.
+- Background corrupt-entry deletion and shared population are best effort. Their eventual completion order does not guarantee that a freshly populated shared entry remains present.
+
+- `invalidate(domainName)` removes the owner’s local value before waiting for shared deletion and attempts to delete the shared value.
+- When invalidation settles, discard local values that were refilled while its shared deletion was pending, whether that deletion succeeded or failed.
+- Resolve invalidation after successful shared deletion. On shared deletion failure or timeout, report the failure and reject with that failure while retaining the local clearing behavior.
+- Detach subsequent misses from refresh work already in progress when invalidation begins. They must not join that earlier refresh.
+- Earlier refreshes may still return their results to callers already waiting, but must not initiate cache population after invalidation has superseded them.
+- Do not cancel loaders, reads, or writes already dispatched. In particular, a previously issued shared write may complete after invalidation.
+- Permit overlapping invalidations. Each call’s promise reflects its own shared deletion outcome.
+- Without competing operations repopulating either tier, a successful invalidation causes the next read to invoke the loader.
+- Invalidation is not an atomic freshness barrier against concurrent reads or already-issued shared operations. Reads overlapping invalidation may observe older values.
+- Invalidation affects the invoking owner’s local cache and its shared entry. Other clients retain their existing local values until expiry or their own invalidation.
+- If shared deletion fails, later reads may retrieve the old shared value and cache it locally again. Rejected invalidation must not imply successful global removal.
+
+- Built-in tiers expose `defaultPolicy`, `setDefaultPolicy(policy)`, `register(domainName, policy)`, asynchronous `get`, `set`, and `delete`, plus `unregister(domainName)`.
+- Tier reads distinguish misses as `{ hit: false }` from hits as `{ hit: true, value }`. Do not use value truthiness to identify misses.
+- Built-in tiers reject duplicate registration and operations on unregistered domains with the corresponding registration errors.
+- Deleting a registered domain’s absent value succeeds without removing its registration.
+- Unregistering releases the domain name for registration again; unregistering an unknown name has no effect.
+- `InMemoryCacheTier.NAME` is `in-memory`. Its default policy is a five-minute TTL.
+- The in-memory tier stores arbitrary values, including `null` and `undefined`, as genuine hits until expiry. These low-level capabilities do not relax loader-result restrictions.
+- Setting an in-memory value replaces the previous value. Unregistering it removes both its registration and stored value.
+- Redis-tier unregistration removes local registration only; it does not delete the persisted shared key.
+
+- `RedisCacheTier.NAME` is `redis`. Its default policy is a 43,200,000-millisecond TTL, overridable through constructor options or `setDefaultPolicy`.
+- Redis TTLs must be positive safe integers. Reject zero, negative, fractional, non-finite, and unsafe values during policy configuration or registration.
+- Accept a shared client exposing `get(key): Promise<string | null>`, `set(key, value, ttlMs): Promise<void>`, and `delete(key): Promise<void>`.
+- Use the exact shared key `reference-data-cache:v1:<domainName>` for reads, writes, and deletion.
+- Treat a shared client result of `null` as a miss. Parse other returned strings as JSON.
+- Treat valid JSON `null` as a hit containing `null`. Owners accept shared hits as supplied; the prohibition on null results applies specifically to loaders.
+- Reject malformed stored JSON with `CacheTierCorruptValueError`, identifying the domain and preserving the parsing `Error` as its cause.
+- Serialize shared values using ordinary JSON rules. Reject serialization exceptions or values producing no JSON text with `CacheTierSerializationError`, without issuing a shared write.
+- Preserve the original serialization `Error` as the cause when available. Circular structures and BigInts without suitable custom conversion must fail serialization.
+- Apply normal JSON transformations rather than preserving arbitrary runtime types. Syntactically valid JSON is not checked against a domain schema.
+- Pass the registered shared TTL on every shared write. Reads must not renew shared expiry.
+
+- Export `DEFAULT_REDIS_OPERATION_TIMEOUT_MS` with value 500. Apply this deadline independently to each Redis read, write, and delete unless overridden.
+- Accept a finite positive operation timeout no greater than 2,147,483,647 milliseconds. Fractional values are subject to timer resolution.
+- Reject invalid timeout configuration with `RangeError`.
+- Reject an overdue Redis operation with `CacheTierTimeoutError` exposing `domainName`, `operation`, and `timeoutMs`.
+- Stop waiting once an operation times out. Discard its late result and contain a late rejection without producing an unhandled rejection.
+- A timeout does not cancel the underlying request. Timed-out writes and deletions may still change shared storage afterward.
+- Release pending deadline timers when operations settle. Timer execution remains subject to event-loop availability.
+- Redis deadlines cover the asynchronous shared-client call, not synchronous JSON conversion, source loading, or an entire owner read.
+- Do not impose an automatic timeout on loaders or arbitrary custom tiers. A hanging loader or unbounded custom tier can leave callers waiting; callers supplying them own those completion guarantees.
+
+- `createRedisCacheTierFromRedisV3` must provide equivalent Redis-tier behavior using a caller-supplied callback client.
+- Adapt callback `get` to reads, `set(key, payload, 'PX', ttlMs, callback)` to expiring writes, and `del` to deletion.
+- Pass default-policy and operation-timeout options through to the resulting tier.
+- Preserve callback errors as operation failures and apply the same timeout, serialization, and reporting behavior as the promise-client Redis tier.
+- Leave Redis connection creation, reconnection, and closure under caller ownership.
+
+- Export `CacheDomainAlreadyRegisteredError`, `CacheDomainNotRegisteredError`, `CacheTierTimeoutError`, `CacheTierSerializationError`, and `CacheTierCorruptValueError` with matching error names.
+- Registration errors expose `domainName` and descriptive messages identifying the raising client or tier. Client messages identify `CacheReader` or `CacheOwner`; tier messages default to `Cache`.
+- Serialization and corrupt-value errors expose `domainName` and preserve causes when available. Error reporting must not replace original operational failures with failures from the reporting hook.
+- Provide no automatic cross-process invalidation broadcast, distributed loading lock, source-data freshness guarantee, or background-write drain guarantee. These limits must remain explicit in the client contract.
