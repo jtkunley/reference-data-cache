@@ -27,7 +27,7 @@ Neither has runtime dependencies or requires a particular Redis client.
 ## Install
 
 ```sh
-npm install reference-data-cache
+npm install @jtkunley/reference-data-cache
 ```
 
 Requires Node.js 22 or later. Ships ESM, CommonJS, and type declarations.
@@ -38,7 +38,7 @@ Use a reader when a process just needs to avoid reloading reference data on ever
 and doesn't need to share loaded values with other processes.
 
 ```ts
-import { createCacheReader } from 'reference-data-cache';
+import { createCacheReader } from '@jtkunley/reference-data-cache';
 
 const cache = createCacheReader({ inMemoryPolicy: { ttlMs: 60_000 } });
 
@@ -76,7 +76,7 @@ v4 or later:
 
 ```ts
 import { createClient } from 'redis';
-import { RedisCacheTier, createCacheOwner } from 'reference-data-cache';
+import { RedisCacheTier, createCacheOwner } from '@jtkunley/reference-data-cache';
 
 const redis = createClient();
 await redis.connect();
@@ -141,7 +141,7 @@ flowchart LR
 
 ```ts
 import redis from 'redis';
-import { createRedisCacheTierFromRedisV3 } from 'reference-data-cache';
+import { createRedisCacheTierFromRedisV3 } from '@jtkunley/reference-data-cache';
 
 const sharedTier = createRedisCacheTierFromRedisV3(redis.createClient(), {
   operationTimeoutMs: 250,

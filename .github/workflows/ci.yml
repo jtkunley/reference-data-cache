@@ -26,6 +26,6 @@ jobs:
       - run: npm run build
       - name: Smoke-test ESM and CJS entry points
         run: |
-          node -e "const m = require('reference-data-cache'); if (typeof m.createCacheOwner !== 'function') process.exit(1)"
-          node --input-type=module -e "import { createCacheOwner } from 'reference-data-cache'; if (typeof createCacheOwner !== 'function') process.exit(1)"
+          node -e "const m = require('@jtkunley/reference-data-cache'); if (typeof m.createCacheOwner !== 'function') process.exit(1)"
+          node --input-type=module -e "import { createCacheOwner } from '@jtkunley/reference-data-cache'; if (typeof createCacheOwner !== 'function') process.exit(1)"
       - run: npm pack --dry-run

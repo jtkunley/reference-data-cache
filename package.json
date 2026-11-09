@@ -1,5 +1,5 @@
 {
-  "name": "reference-data-cache",
+  "name": "@jtkunley/reference-data-cache",
   "version": "1.0.0",
   "description": "Named, read-through caching for reference data in Node.js, with a local in-memory tier, an optional shared Redis tier, single-flight loading, and graceful degradation when the shared tier fails.",
   "keywords": [
@@ -46,6 +46,9 @@
     "CHANGELOG.md"
   ],
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22"
   },
