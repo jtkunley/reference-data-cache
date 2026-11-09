@@ -1,11 +1,11 @@
 # reference-data-cache
 
-[![CI](https://img.shields.io/github/actions/workflow/status/jtkunley/reference-data-cache/ci.yml?branch=main&label=CI)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/github/package-json/v/jtkunley/reference-data-cache?label=version)](package.json)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
+[![npm](https://img.shields.io/npm/v/@jtkunley/reference-data-cache)](https://www.npmjs.com/package/@jtkunley/reference-data-cache)
+[![CI](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](package.json)
 [![TypeScript](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](src/index.ts)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
-[![License](https://img.shields.io/github/license/jtkunley/reference-data-cache)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Named, read-through caching for **reference data** in Node.js: country lists, product
 catalogs, feature tables, anything small, read often, and loaded as a whole.

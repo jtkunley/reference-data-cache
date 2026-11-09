@@ -1,16 +1,20 @@
 {
   "name": "@jtkunley/reference-data-cache",
   "version": "1.0.0",
-  "description": "Named, read-through caching for reference data in Node.js, with a local in-memory tier, an optional shared Redis tier, single-flight loading, and graceful degradation when the shared tier fails.",
+  "description": "Read-through cache for reference data in Node.js. A reader caches in memory; an owner also shares values through Redis and can invalidate. Single-flight loading, and Redis failures never fail a read.",
   "keywords": [
     "cache",
+    "caching",
     "reference-data",
+    "read-through-cache",
+    "in-memory-cache",
     "redis",
-    "in-memory",
-    "read-through",
+    "redis-cache",
+    "cache-invalidation",
     "single-flight",
     "ttl",
-    "typescript"
+    "typescript",
+    "nodejs"
   ],
   "homepage": "https://github.com/jtkunley/reference-data-cache#readme",
   "bugs": {
