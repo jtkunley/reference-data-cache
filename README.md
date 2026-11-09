@@ -14,7 +14,7 @@ It comes in two shapes, one per use case:
 
 |                        | **Reader**            | **Owner** (read-write)                            |
 | ---------------------- | --------------------- | ------------------------------------------------- |
-| Create with            | `createCacheReader()` | `createCacheOwner({ sharedTier })`                |
+| Create with            | `createCacheReader()` | `createCacheOwner()`                              |
 | Where values live      | This process's memory | This process's memory, plus a shared tier (Redis) |
 | On a miss              | Calls your loader     | Tries the shared tier, then calls your loader     |
 | Writes the shared tier | Never                 | After each load, in the background                |
