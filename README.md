@@ -1,21 +1,28 @@
 # reference-data-cache
 
-[![CI](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/reference-data-cache.svg)](https://www.npmjs.com/package/reference-data-cache)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/jtkunley/reference-data-cache/ci.yml?branch=main&label=CI)](https://github.com/jtkunley/reference-data-cache/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/jtkunley/reference-data-cache?label=version)](package.json)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/types-TypeScript-3178C6?logo=typescript&logoColor=white)](src/index.ts)
+[![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
+[![License](https://img.shields.io/github/license/jtkunley/reference-data-cache)](LICENSE)
 
 Named, read-through caching for **reference data** in Node.js: country lists, product
 catalogs, feature tables, anything small, read often, and loaded as a whole.
 
-- **Two tiers.** A local in-memory cache in every process, plus an optional shared tier
-  (Redis, or anything implementing `CacheTier`).
-- **Single-flight loading.** Concurrent misses for a domain share one shared read and one
-  loader call per client.
-- **Degrades gracefully.** Redis timeouts, outages, and corrupt entries are reported, never
-  thrown at readers; the loader is the fallback.
-- **No Redis dependency.** Bring any client that fits a three-method interface, or the
-  callback API of `redis` v3.
-- **Typed, dual ESM/CJS, zero runtime dependencies.**
+It comes in two shapes, one per use case:
+
+|                        | **Reader**            | **Owner** (read-write)                            |
+| ---------------------- | --------------------- | ------------------------------------------------- |
+| Create with            | `createCacheReader()` | `createCacheOwner({ sharedTier })`                |
+| Where values live      | This process's memory | This process's memory, plus a shared tier (Redis) |
+| On a miss              | Calls your loader     | Tries the shared tier, then calls your loader     |
+| Writes the shared tier | Never                 | After each load, in the background                |
+| Can invalidate         | No                    | Yes, locally and in the shared tier               |
+| Needs Redis            | No                    | Yes, or any custom `CacheTier`                    |
+
+Both load **single-flight**: concurrent misses for a domain share one load per client.
+Neither has runtime dependencies or requires a particular Redis client.
 
 ## Install
 
@@ -23,11 +30,12 @@ catalogs, feature tables, anything small, read often, and loaded as a whole.
 npm install reference-data-cache
 ```
 
-Requires Node.js 22 or later.
+Requires Node.js 22 or later. Ships ESM, CommonJS, and type declarations.
 
-## Quick start
+## Use case 1: Reader, a local cache in front of a loader
 
-### Local-only reader
+Use a reader when a process just needs to avoid reloading reference data on every request,
+and doesn't need to share loaded values with other processes.
 
 ```ts
 import { createCacheReader } from 'reference-data-cache';
@@ -42,7 +50,29 @@ cache.register({
 const countries = await cache.get<Country[]>('countries');
 ```
 
-### Owner with a shared Redis tier
+How a reader serves `get`:
+
+```mermaid
+flowchart LR
+  get["get(name)"] --> local{"Fresh in memory?"}
+  local -- yes --> done["Return value"]
+  local -- no --> flight{"Load already running?"}
+  flight -- yes --> join["Wait for it"] --> done
+  flight -- no --> load["loader.load()"] --> store["Keep in memory"] --> done
+```
+
+- Values expire `ttlMs` after they were loaded (default 5 minutes); reads don't extend them.
+- A failed load rejects every waiting caller and isn't cached, so the next read tries again.
+- There's no background refresh: an expired value is reloaded by the next read.
+
+## Use case 2: Owner, sharing loaded values through Redis
+
+Use an owner when several processes read the same reference data and you want one load to
+serve all of them, or when you change the data and need to invalidate the cached copy.
+
+An owner reads from and writes to a **shared tier**. `RedisCacheTier` takes any client that
+fits a three-method interface; here it wraps [`redis`](https://www.npmjs.com/package/redis)
+v4 or later:
 
 ```ts
 import { createClient } from 'redis';
@@ -77,11 +107,37 @@ cache.register({
 
 const countries = await cache.get<Country[]>('countries');
 
-// After the source data changes:
+// After you change the source data:
 await cache.invalidate('countries');
 ```
 
-### `redis` v3 (callback API)
+How an owner serves `get`:
+
+```mermaid
+flowchart LR
+  get["get(name)"] --> local{"Fresh in memory?"}
+  local -- yes --> done["Return value"]
+  local -- no --> flight{"Load already running?"}
+  flight -- yes --> join["Wait for it"] --> done
+  flight -- no --> shared{"In Redis?"}
+  shared -- yes --> promote["Keep in memory"] --> done
+  shared -- "no, or Redis failed" --> load["loader.load()"]
+  load --> store["Keep in memory, write to Redis in the background"] --> done
+```
+
+- **Redis problems never fail a read.** Timeouts, outages, and corrupt entries are passed to
+  `onTierError`, and the loader is used instead. A corrupt entry is also deleted.
+- **Writes are not awaited.** `get` returns as soon as the value is loaded; a successful read
+  doesn't mean the value reached Redis.
+- **TTLs must nest.** The in-memory TTL can't exceed the shared TTL. The shared TTL comes
+  from `sharedPolicy`, or the tier's default (12 hours) at registration time.
+- **Invalidation is local plus shared.** `invalidate` clears this process's copy immediately,
+  deletes the Redis entry, and resolves once that delete succeeds. Other processes keep
+  their in-memory copies until they expire.
+- **One tier instance per owner.** Several `RedisCacheTier` instances can share one Redis
+  connection.
+
+### Using `redis` v3 (callback API)
 
 ```ts
 import redis from 'redis';
@@ -93,86 +149,62 @@ const sharedTier = createRedisCacheTierFromRedisV3(redis.createClient(), {
 ```
 
 The adapter calls `get(key, cb)`, `set(key, payload, 'PX', ttlMs, cb)`, and `del(key, cb)`.
-Creating, reconnecting, and closing the connection remain your responsibility.
-
-## How a read works
-
-```mermaid
-flowchart TD
-  get["get(name)"] --> local{"Local hit?"}
-  local -- yes --> done["Return value"]
-  local -- no --> flight{"Refresh in flight?"}
-  flight -- yes --> join["Join it"]
-  flight -- no --> shared{"Owner: shared hit?"}
-  shared -- yes --> promote["Store locally"] --> done
-  shared -- "miss or failure" --> load["loader.load()"]
-  load --> store["Store locally, start shared write (not awaited)"] --> done
-```
-
-A reader skips the shared step. Shared read failures are reported to `onTierError` and
-treated as misses; a corrupt shared value is also deleted in the background.
+In both setups, creating, reconnecting, and closing the Redis connection stay with you.
 
 ## Concepts
 
 **Domain.** One named cached value with a loader. Names are exact and case-sensitive.
 Loaders take no arguments and must not resolve to `null` or `undefined`; falsy values like
-`0`, `false`, `''`, `[]`, and `{}` are fine. Loader errors propagate to every waiting caller
-and are not cached, so the next read tries again.
+`0`, `false`, `''`, `[]`, and `{}` are fine.
 
-**Policies.** `{ ttlMs }`. The local TTL defaults to 5 minutes; set a client default with
-`inMemoryPolicy` and override it per domain. Owners use the domain's `sharedPolicy` or the
-shared tier's default at registration time, and reject a local TTL longer than the shared
-TTL. Policies are copied and frozen on registration.
+**Policies.** `{ ttlMs }`, measured from the latest write. Set a client-wide in-memory default
+with `inMemoryPolicy` and override it per domain. Policies are copied and frozen on
+registration, so mutating your objects later has no effect.
 
-**Expiry.** Entries expire `ttlMs` after their latest write; reading does not extend them.
-A value promoted from the shared tier gets a full local TTL, regardless of how long it had
-left in the shared tier. There is no background refresh, stale-while-revalidate, capacity
-limit, or eager eviction.
-
-**References.** Local values are kept by reference, not cloned or frozen. Values that pass
-through Redis go through JSON, so use JSON-compatible data if results must match across
-tiers.
+**References and JSON.** In-memory values are kept by reference, not cloned or frozen.
+Values that pass through Redis go through JSON, so use JSON-compatible data if results must
+match across tiers.
 
 ## API
 
-### Clients
+### Reader
 
-| Function                      | Returns       | Notes                                          |
-| ----------------------------- | ------------- | ---------------------------------------------- |
-| `createCacheReader(options?)` | `CacheReader` | Local cache only. `options.inMemoryPolicy`.    |
-| `createCacheOwner(options)`   | `CacheOwner`  | Requires `sharedTier`; optional `onTierError`. |
+| Member                        | Description                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `createCacheReader(options?)` | Creates a `CacheReader`. `options.inMemoryPolicy` sets the default TTL.     |
+| `register(domain)`            | Registers `{ name, loader, inMemoryPolicy? }` without loading. Synchronous. |
+| `get<T>(name)`                | Resolves the value, loading it on a miss. `T` is an unchecked assertion.    |
 
-- `register(domain)` is synchronous. It throws `CacheDomainAlreadyRegisteredError` for
-  duplicates and `TypeError`/`RangeError` for invalid definitions, and leaves nothing
-  registered when it fails.
-- `get<T>(name)` resolves the value or rejects with `CacheDomainNotRegisteredError` or
-  the loader's error. `T` is an unchecked assertion.
-- `invalidate(name)` (owners only) clears the local value immediately, deletes the shared
-  value, and resolves when the delete succeeds. It rejects with the delete failure, which
-  is also reported to `onTierError`, but the local value is cleared either way.
+### Owner
 
-### Tiers
+Everything a reader has, plus:
+
+| Member                      | Description                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `createCacheOwner(options)` | Creates a `CacheOwner`. Requires `sharedTier`; accepts `inMemoryPolicy` and `onTierError`.                               |
+| `register(domain)`          | Also accepts `sharedPolicy`, and registers the domain with the shared tier.                                              |
+| `invalidate(name)`          | Clears the local copy and deletes the shared one. Rejects if the delete fails, but the local copy is cleared either way. |
+
+`onTierError` receives `{ domain, tier: 'shared', operation, kind, error }` once per failed
+shared operation. `operation` is `get`, `set`, or `delete`; `kind` is `timeout`,
+`serialize`, `corrupt-value`, or `error`; `error` is the original failure. The hook's
+return value is ignored, and anything it throws or rejects is contained.
+
+### Shared tiers
 
 | Class               | `NAME`        | Default TTL | TTL rule              |
 | ------------------- | ------------- | ----------- | --------------------- |
-| `InMemoryCacheTier` | `'in-memory'` | 5 minutes   | finite, `>= 0`        |
 | `RedisCacheTier`    | `'redis'`     | 12 hours    | positive safe integer |
+| `InMemoryCacheTier` | `'in-memory'` | 5 minutes   | finite, `>= 0`        |
 
-Both implement `CacheTier`: `defaultPolicy`, `setDefaultPolicy`, `register`, `unregister`,
-`get` (resolving `{ hit: false }` or `{ hit: true, value }`), `set`, and `delete`.
-`RedisCacheTier` stores JSON under `reference-data-cache:v1:<domainName>` and applies
-`operationTimeoutMs` (default `DEFAULT_REDIS_OPERATION_TIMEOUT_MS`, 500 ms) to each call.
-Its `unregister` leaves the stored key in place.
+Both implement `CacheTier` (`defaultPolicy`, `setDefaultPolicy`, `register`, `unregister`,
+`get`, `set`, `delete`), which you can also implement yourself. `get` resolves
+`{ hit: false }` or `{ hit: true, value }`. `InMemoryCacheTier` is mainly useful in tests or
+as a stand-in for Redis.
 
-Tiers track registrations, so give each owner its own tier instance. Several
-`RedisCacheTier` instances can wrap the same Redis connection.
-
-### Tier error events
-
-`onTierError` receives `{ domain, tier: 'shared', operation, kind, error }` once per failed
-shared operation, where `operation` is `get`, `set`, or `delete` and `kind` is `timeout`,
-`serialize`, `corrupt-value`, or `error`. The original failure is passed through unchanged.
-Return values are ignored, and throws or rejections from the hook are contained.
+`RedisCacheTier` stores JSON under `reference-data-cache:v1:<name>` and gives each Redis call
+its own deadline, `operationTimeoutMs` (default `DEFAULT_REDIS_OPERATION_TIMEOUT_MS`,
+500 ms). Its `unregister` leaves the stored key in place.
 
 ### Errors
 
@@ -185,6 +217,8 @@ Return values are ignored, and throws or rejections from the hook are contained.
 | `CacheTierCorruptValueError`        | A stored Redis value was not valid JSON      |
 
 All expose `domainName`; the timeout error also exposes `operation` and `timeoutMs`.
+Invalid policies and options throw `TypeError` or `RangeError`, and a failed registration
+leaves nothing registered.
 
 ## Guarantees and limits
 
@@ -192,15 +226,16 @@ The library deliberately does **not** provide:
 
 - **Cross-process coordination.** Single-flight loading is per client instance. Other
   processes may load the same domain at the same time.
-- **Invalidation broadcast.** `invalidate` clears the calling owner's local value and the
-  shared entry. Other processes keep their local values until they expire.
+- **Invalidation broadcast.** Other processes keep their in-memory copies until they expire.
 - **A freshness barrier.** Reads that overlap an invalidation may see older values, and a
-  shared write dispatched before invalidation may still land afterwards. If the shared
-  delete fails, later reads may bring the old shared value back.
-- **Write confirmation.** A successful `get` does not mean the value reached Redis; shared
-  writes are best effort and not awaited, and there is no drain on shutdown.
-- **Cancellation.** A Redis timeout stops waiting but does not cancel the request.
-  Loaders and custom tiers have no timeout; if they hang, callers wait.
+  Redis write dispatched before invalidation may still land afterwards. If the delete fails,
+  later reads may bring the old value back from Redis.
+- **Write confirmation or draining.** Redis writes are best effort, and nothing waits for
+  them on shutdown.
+- **Cancellation.** A Redis timeout stops waiting but doesn't cancel the request. Loaders
+  and custom tiers have no timeout; if they hang, callers wait.
+- **Scheduled refresh or eviction.** No background refresh, stale-while-revalidate, or
+  capacity limit.
 - **Schema validation.** Values are not checked at runtime.
 
 The full behavioral contract is in [`docs/behavior-spec.md`](docs/behavior-spec.md).
@@ -213,7 +248,7 @@ npm run check   # typecheck, lint, format check, tests
 npm run build   # dist/ (ESM + CJS + type declarations)
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project layout.
 
 ## License
 
