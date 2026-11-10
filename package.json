@@ -1,6 +1,6 @@
 {
   "name": "@jtkunley/reference-data-cache",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read-through cache for reference data in Node.js. A reader caches in memory; an owner also shares values through Redis and can invalidate. Single-flight loading, and Redis failures never fail a read.",
   "keywords": [
     "cache",

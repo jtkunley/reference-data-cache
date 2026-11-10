@@ -4,7 +4,10 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - 2026-11-08
+## [1.0.1] - 2026-11-09
+
+First public release. Version 1.0.0 was published from an earlier codebase and then
+withdrawn; npm does not allow a version number to be reused.
 
 ### Added
 
@@ -17,4 +20,4 @@ All notable changes to this project are documented here. The format follows
 - Typed errors: `CacheDomainAlreadyRegisteredError`, `CacheDomainNotRegisteredError`,
   `CacheTierTimeoutError`, `CacheTierSerializationError`, and `CacheTierCorruptValueError`.
 
-[1.0.0]: https://github.com/jtkunley/reference-data-cache/releases/tag/v1.0.0
+[1.0.1]: https://github.com/jtkunley/reference-data-cache/releases/tag/v1.0.1
